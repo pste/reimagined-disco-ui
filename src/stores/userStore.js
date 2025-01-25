@@ -6,8 +6,8 @@ const useUserStore = defineStore('user', {
     },
 
     getters: {
-        username(state) {
-            return state?.user?.name || '';
+        token(state) {
+            return undefined // state?.user?.name || '';
         }
     }, 
     
