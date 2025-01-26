@@ -1,6 +1,6 @@
 <script setup>
 import { ref, inject } from 'vue'
-import Album from './Album.vue'
+import Album from '@/components/Album.vue'
 
 // init stuff
 const API = inject('API');
@@ -10,12 +10,12 @@ const items = ref([])
 
 // methods 
 async function getTime() {
-    items.value = await API.get('/search/songs', {title: "time"});
+    items.value = await API.get('/search/albums'); //, {title: "time"});
 }
 </script>
 
 <template>
-    <button @click="getTime">Click Me!</button>
+    <Button @click="getTime">Click Me!</Button>
     Albums:
     <Album v-for="item in items"
         :artist="item.artist"
