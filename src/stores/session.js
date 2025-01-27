@@ -8,12 +8,16 @@ const useSessionStore = defineStore('session', {
     },
 
     getters: {
+        username(state) {
+            return state.user?.name || '';
+        },
+
         token(state) {
-            return undefined // state?.user?.name || '';
+            return state?.user?.token;
         },
 
         loggedIn(state) {
-            return this.user !== null
+            return this.user !== null;
         },
     }, 
     
@@ -23,7 +27,7 @@ const useSessionStore = defineStore('session', {
         },
 
         userLogout() {
-            this.user = null
+            this.user = null;
         }
     }
 })

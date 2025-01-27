@@ -1,9 +1,12 @@
 <script setup>
-import { RouterLink, RouterView } from 'vue-router'
-import PageAlbums from './pages/Albums.vue';
+import { RouterView } from 'vue-router'
+import ToolBar from './components/ToolBar.vue';
 </script>
 
 <template>
+    <header>
+        <ToolBar />
+    </header>
     <RouterView />
 </template>
 
