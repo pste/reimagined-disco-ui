@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia';
 
-const useUserStore = defineStore('user', {
+console.log("defineStore session")
+
+const useSessionStore = defineStore('session', {
     state: () => {
         user: null
     },
@@ -8,7 +10,11 @@ const useUserStore = defineStore('user', {
     getters: {
         token(state) {
             return undefined // state?.user?.name || '';
-        }
+        },
+
+        loggedIn(state) {
+            return this.user !== null
+        },
     }, 
     
     actions: {
@@ -22,14 +28,14 @@ const useUserStore = defineStore('user', {
     }
 })
 
-export default useUserStore;
+export default useSessionStore;
 
 /* 
 in your component:
 
 1. import needed stuff
 import { mapStores, mapState, mapWritableState } from 'pinia'
-import { useUserStore } from '@/stores/userStore'
+import useUserStore from '@/stores/userStore'
 
 2. use it rough:
 data() {

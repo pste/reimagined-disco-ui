@@ -1,10 +1,9 @@
-import userStore from '@/stores/userStore'
-import errorsStore from '@/stores/errorsStore'
+import useSessionStore from '@/stores/session'
+import useErrorsStore from '@/stores/errors'
 
 const baseaddress = 'http://127.0.0.1:3001' // TODO
 
-function buildHeaders() {
-    const token = userStore.token; // should be undefined or a valid token
+function buildHeaders(token) {
     return {
         headers: {
             'Accept': 'application/json',
@@ -15,10 +14,14 @@ function buildHeaders() {
 }
 
 function createAPI() {
+    console.log("createAPI")
+    const errorsStore = useErrorsStore();
+    const sessionStore = useSessionStore();
+
     return {
         get: async (url, data) => {
             // headers
-            const config = buildHeaders();
+            const config = buildHeaders(sessionStore.token);
             // url
             let address = new URL(url, baseaddress);
             // querystring

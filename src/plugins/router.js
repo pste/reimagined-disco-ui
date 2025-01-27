@@ -1,13 +1,28 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../pages/PageAlbums.vue'
+import LoginView from '../pages/Login.vue'
+import AlbumsView from '../pages/Albums.vue'
+import ArtistsView from '../pages/Artists.vue'
+import useSessionStore from '@/stores/session'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
-      name: 'home',
-      component: HomeView,
+      name: 'login',
+      component: LoginView,
+    },
+    {
+        path: '/artists',
+        name: 'artists',
+        component: ArtistsView,
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/albums/:artistid',
+        name: 'albums',
+        component: AlbumsView,
+        meta: { requiresAuth: true }
     },
     /*{
       path: '/about',
@@ -20,4 +35,13 @@ const router = createRouter({
   ],
 })
 
+//
+router.beforeEach((to) => {
+    const store = useSessionStore();
+    if (to.meta.requiresAuth === true && store.loggedIn === false) {
+        return '/login'
+    }
+})
+
+//
 export default router
