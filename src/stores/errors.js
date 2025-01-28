@@ -1,5 +1,4 @@
 import { defineStore } from 'pinia';
-console.log("defineStore errors")
 
 const useErrorsStore = defineStore('errors', {
     state: () => {

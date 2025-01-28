@@ -7,10 +7,14 @@ import ToolBar from './components/ToolBar.vue';
     <header>
         <ToolBar />
     </header>
+
     <RouterView />
 </template>
 
-<style scoped>
+<style>
+body {
+    background-color: var(--p-slate-600);
+}
 /*
 header {
   line-height: 1.5;

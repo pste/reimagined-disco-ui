@@ -31,14 +31,6 @@ function gotoAlbums(id) {
         size="xlarge"
         @click="gotoAlbums(id)"
     />
-
-    <!--<Card style="width: 18rem; overflow: hidden">
-        <template #header>
-            <img alt="user header" src="/images/usercard.png" />
-        </template>
-        <template #title>{{ shortName }}</template>
-        <template #subtitle>{{ artist }}</template>
-    </Card>-->
 </template>
 
 <style scoped>

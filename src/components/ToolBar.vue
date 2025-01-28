@@ -12,9 +12,9 @@ function logout() {
 </script>
 
 <template>
-    <Toolbar v-if="session.loggedIn">
+    <Menubar  v-if="session.loggedIn">
         <template #start>
-            <Button icon="pi pi-plus" class="mr-2" severity="secondary" text @click="logout" />
+            <Button icon="pi pi-sign-out" class="mr-2" severity="secondary" text @click="logout" />
         </template>
 
         <template #center>
@@ -29,5 +29,12 @@ function logout() {
         <template #end>
             {{ session.username }}
         </template>
-    </Toolbar>
+    </Menubar >
 </template>
+
+<style scoped>
+.p-menubar {
+    padding: 0;
+    border-radius: 0;
+}
+</style>

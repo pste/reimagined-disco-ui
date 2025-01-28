@@ -1,7 +1,6 @@
 import useSessionStore from '@/stores/session'
 import useErrorsStore from '@/stores/errors'
-
-const baseaddress = 'http://127.0.0.1:3001' // TODO
+import useGlobalsStore from '@/stores/globals'
 
 function buildHeaders(token) {
     return {
@@ -14,16 +13,16 @@ function buildHeaders(token) {
 }
 
 function createAPI() {
-    console.log("createAPI")
     const errorsStore = useErrorsStore();
     const sessionStore = useSessionStore();
+    const globals = useGlobalsStore();
 
     return {
         get: async (url, data) => {
             // headers
             const config = buildHeaders(sessionStore.token);
             // url
-            let address = new URL(url, baseaddress);
+            let address = new URL(url, globals.apiURL);
             // querystring
             if (data) {
                 address += '?' + new URLSearchParams(data);

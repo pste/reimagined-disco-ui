@@ -38,7 +38,7 @@ const router = createRouter({
 //
 router.beforeEach((to) => {
     const store = useSessionStore();
-    console.log('beforeEach')
+    
     if (to.meta.requiresAuth === true && store.loggedIn === false) {
         return '/login'
     }

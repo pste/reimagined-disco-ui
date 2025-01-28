@@ -18,8 +18,18 @@ async function login() {
 </script>
 
 <template>
-    <Button @click="login">Login</Button>
+    <Card>
+        <template #content>
+            <div class="centered">
+                <Button @click="login">Login</Button>
+            </div>
+        </template>
+    </Card>
 </template>
 
 <style scoped>
+.centered {
+    margin: auto;
+    text-align: center;
+}
 </style>
