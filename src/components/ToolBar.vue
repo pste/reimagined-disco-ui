@@ -1,10 +1,13 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, inject } from 'vue'
 import { useRouter } from 'vue-router'
 import useSessionStore from '@/stores/session'
+import useAlbumsStore from '@/stores/albums'
 
+const API = inject('API');
 const router = useRouter()
 const session = useSessionStore()
+const albumsStore = useAlbumsStore()
 
 // data
 const menuOpen = ref();
@@ -15,8 +18,8 @@ const menuItems = ref([
             {
                 label: 'Refresh',
                 icon: 'pi pi-refresh',
-                command: () => {
-                    // TODO
+                command: async() => {
+                    albumsStore.discs = await API.get('/search/albums');
                 }
             },
             {
@@ -29,7 +32,6 @@ const menuItems = ref([
         ]
     }
 ]);
-const filterText = ref('')
 
 // methods
 function logout() {
@@ -56,12 +58,12 @@ const toggleMenu = (event) => {
             <Menu ref="menuOpen" id="overlay_menu" :model="menuItems" :popup="true" />
 
             <InputText 
-                    v-model="filterText"
+                    v-model="albumsStore.filter"
                     placeholder="Search" 
                     type="text" 
                     size="small"
             />
-            <Button icon="pi pi-times-circle" class="mr-2" severity="secondary" text @click="filterText=''" />
+            <Button icon="pi pi-times-circle" class="mr-2" severity="secondary" text @click="albumsStore.filter=''" />
         </template>
 
         <template #end>

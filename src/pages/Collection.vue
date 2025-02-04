@@ -1,33 +1,21 @@
 <script setup>
-import { ref, inject, computed } from 'vue'
-//import { useRoute } from 'vue-router'
+import { computed } from 'vue'
 import Album from '@/components/Album.vue'
-const API = inject('API');
 
-// const route = useRoute();
+import useAlbumsStore from '@/stores/albums'
+const albumsStore = useAlbumsStore()
 
 // computed
 const sortedList = computed(() => {
-    return albums.value.sort( (a,b) => {
+    return albumsStore.filteredAlbums
+    /*.sort( (a,b) => {
         if (a.artist < b.artist) return -1;
         if (a.artist > b.artist) return 1;
         if (a.year < b.year) return -1;
         if (a.year > b.year) return 1;
         return 0;
-    });
+    });*/
 })
-
-// init stuff
-
-
-// data
-const albums = ref([]);
-
-// methods 
-async function loadPage() {
-    albums.value = await API.get('/search/albums'); // , { artistid: route.params.artistid });
-}
-loadPage()
 </script>
 
 <template>
