@@ -25,17 +25,38 @@ async function login() {
 </script>
 
 <template>
-    <Card>
-        <template #content>
-            <div class="centered">
-                <Button @click="login">Login</Button>
-            </div>
-        </template>
-    </Card>
+    <div class="loginpage">
+        <div class="loginbox">
+            <Card class="logincard">
+                <template #content>
+                    <div class="centered-content">
+                        <Button @click="login">Login</Button>
+                    </div>
+                </template>
+            </Card>
+        </div>
+    </div>
 </template>
 
 <style scoped>
-.centered {
+.loginpage {
+  display: table;
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+}
+.loginbox {
+    display: table-cell;
+    vertical-align: middle;
+}
+.logincard {
+    margin-left: auto;
+    margin-right: auto;
+    width: 50vw;
+}
+.centered-content {
     margin: auto;
     text-align: center;
 }
