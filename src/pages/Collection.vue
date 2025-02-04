@@ -2,6 +2,7 @@
 import { ref, inject, computed } from 'vue'
 //import { useRoute } from 'vue-router'
 import Album from '@/components/Album.vue'
+const API = inject('API');
 
 // const route = useRoute();
 
@@ -17,7 +18,7 @@ const sortedList = computed(() => {
 })
 
 // init stuff
-const API = inject('API');
+
 
 // data
 const albums = ref([]);

@@ -1,33 +1,74 @@
 <script setup>
-import useSessionStore from '@/stores/session'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import useSessionStore from '@/stores/session'
 
 const router = useRouter()
 const session = useSessionStore()
 
+// data
+const menuOpen = ref();
+const menuItems = ref([
+    {
+        label: 'Options',
+        items: [
+            {
+                label: 'Refresh',
+                icon: 'pi pi-refresh',
+                command: () => {
+                    // TODO
+                }
+            },
+            {
+                label: 'Export',
+                icon: 'pi pi-upload',
+                command: () => {
+                    // TODO
+                }
+            }
+        ]
+    }
+]);
+const filterText = ref('')
+
+// methods
 function logout() {
     session.userLogout();
     router.replace('/');
 }
+
+const toggleMenu = (event) => {
+    menuOpen.value.toggle(event);
+};
 </script>
 
 <template>
     <Menubar  v-if="session.loggedIn">
         <template #start>
-            <Button icon="pi pi-sign-out" class="mr-2" severity="secondary" text @click="logout" />
-        </template>
+            <Button 
+                icon="pi pi-bars" 
+                @click="toggleMenu" 
+                class="mr-2" 
+                text severity="secondary" 
+                aria-haspopup="true" 
+                aria-controls="overlay_menu" 
+            />
+            <Menu ref="menuOpen" id="overlay_menu" :model="menuItems" :popup="true" />
 
-        <template #center>
-            <IconField>
-                <InputIcon>
-                    <i class="pi pi-search" />
-                </InputIcon>
-                <InputText placeholder="Search" />
-            </IconField>
+            <InputText 
+                    v-model="filterText"
+                    placeholder="Search" 
+                    type="text" 
+                    size="small"
+            />
+            <Button icon="pi pi-times-circle" class="mr-2" severity="secondary" text @click="filterText=''" />
         </template>
 
         <template #end>
-            {{ session.username }}
+            <div class="flex items-center gap-2">
+                <Avatar icon="pi pi-user" shape="circle" v-tooltip.bottom="`${session.username}`"/>
+                <Button icon="pi pi-sign-out" class="mr-2" severity="secondary" text @click="logout" />
+            </div>
         </template>
     </Menubar >
 </template>
@@ -35,6 +76,5 @@ function logout() {
 <style scoped>
 .p-menubar {
     padding: 0;
-    border-radius: 0;
 }
 </style>
