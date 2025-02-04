@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '../pages/Login.vue'
-import AlbumsView from '../pages/Albums.vue'
-import ArtistsView from '../pages/Artists.vue'
+import CollectionView from '../pages/Collection.vue'
+//import ArtistsView from '../pages/Artists.vue'
 import useSessionStore from '@/stores/session'
 
 const router = createRouter({
@@ -13,18 +13,18 @@ const router = createRouter({
       component: LoginView,
     },
     {
-        path: '/artists',
-        name: 'artists',
-        component: ArtistsView,
+        path: '/collection',
+        name: 'collection',
+        component: CollectionView,
         meta: { requiresAuth: true }
     },
-    {
+    /*{
         path: '/albums/:artistid',
         name: 'albums',
         component: AlbumsView,
         meta: { requiresAuth: true }
     },
-    /*{
+    {
       path: '/about',
       name: 'about',
       // route level code-splitting

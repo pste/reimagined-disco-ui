@@ -13,7 +13,7 @@ async function login() {
     name: "Sepo"
    })
 
-   router.push( {name: 'artists' } );
+   router.push( {name: 'collection' } );
 }
 </script>
 
