@@ -1,9 +1,9 @@
 import { defineStore } from 'pinia';
 
 const useErrorsStore = defineStore('errors', {
-    state: () => {
+    state: () => ({
         errors: []
-    },
+    }),
 
     actions: {
         pushError(val) {

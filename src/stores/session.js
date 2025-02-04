@@ -1,9 +1,9 @@
 import { defineStore } from 'pinia';
 
 const useSessionStore = defineStore('session', {
-    state: () => {
+    state: () => ({
         user: null
-    },
+    }),
 
     getters: {
         username(state) {
@@ -15,7 +15,7 @@ const useSessionStore = defineStore('session', {
         },
 
         loggedIn(state) {
-            return this.user !== null;
+            return state.user !== null;
         },
     }, 
     
