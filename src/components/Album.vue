@@ -26,10 +26,11 @@ const image = computed(() => {
 
 <template>
      <!-- <img :src="image" />-->
-    <div class="album" 
-        v-tooltip.bottom="`${title}`"
-    >
-        <div class="cover" :style="{backgroundImage: `url('${image}')`}"></div>
+    <div class="album">
+        <div    class="cover" 
+                :style="{backgroundImage: `url('${image}')`}"
+                v-tooltip.bottom="`${title}`"
+        ></div>
         <div class="info">
             <span class="artist">{{ artist }}</span>
             <span class="title">{{ title }}</span>
@@ -41,7 +42,6 @@ const image = computed(() => {
 .album {
     border: 2px;
     margin: 10px;
-    font-family: Inter var,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol;
     width: 150px;
     display: inline-block;
 }
