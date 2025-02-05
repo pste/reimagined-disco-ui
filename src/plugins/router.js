@@ -40,7 +40,7 @@ router.beforeEach((to) => {
     const store = useSessionStore();
     
     if (to.meta.requiresAuth === true && store.loggedIn === false) {
-        return '/login'
+        return '/'
     }
 })
 
