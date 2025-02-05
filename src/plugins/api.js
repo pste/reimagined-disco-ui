@@ -13,12 +13,13 @@ function buildHeaders(token) {
 }
 
 function createAPI() {
-    const errorsStore = useErrorsStore();
-    const sessionStore = useSessionStore();
-    const globals = useGlobalsStore();
-
     return {
         get: async (url, data) => {
+            // defer store usage (this handles circular reference between store => API => store)
+            const errorsStore = useErrorsStore();
+            const sessionStore = useSessionStore();
+            const globals = useGlobalsStore();
+
             // headers
             const config = buildHeaders(sessionStore.token);
             // url

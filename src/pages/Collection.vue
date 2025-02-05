@@ -7,14 +7,13 @@ const albumsStore = useAlbumsStore()
 
 // computed
 const sortedList = computed(() => {
-    return albumsStore.filteredAlbums
-    /*.sort( (a,b) => {
+    return albumsStore.filteredAlbums.sort( (a,b) => {
         if (a.artist < b.artist) return -1;
         if (a.artist > b.artist) return 1;
         if (a.year < b.year) return -1;
         if (a.year > b.year) return 1;
         return 0;
-    });*/
+    });
 })
 </script>
 

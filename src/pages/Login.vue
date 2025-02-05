@@ -18,7 +18,7 @@ async function login() {
         name: "Sepo"
     })
     // 
-    albumsStore.discs = await API.get('/search/albums'); // , { artistid: route.params.artistid });
+    await albumsStore.loadAlbums() // .discs = await API.get('/search/albums'); // , { artistid: route.params.artistid });
     // 
     router.push( {name: 'collection' } );
 }

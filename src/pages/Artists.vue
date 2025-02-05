@@ -9,6 +9,7 @@ const API = inject('API');
 const items = ref([])
 
 // methods 
+/*
 async function loadPage() {
     const data = await API.get('/search/artists');
     items.value = data.sort( (a,b) => {
@@ -17,7 +18,7 @@ async function loadPage() {
         return 0;
     });
 }
-loadPage()
+loadPage()*/
 </script>
 
 <template>

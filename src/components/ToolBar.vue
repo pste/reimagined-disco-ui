@@ -19,7 +19,8 @@ const menuItems = ref([
                 label: 'Refresh',
                 icon: 'pi pi-refresh',
                 command: async() => {
-                    albumsStore.discs = await API.get('/search/albums');
+                    //albumsStore.discs = await API.get('/search/albums');
+                    await albumsStore.loadAlbums();
                 }
             },
             {
