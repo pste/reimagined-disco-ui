@@ -1,13 +1,13 @@
 <script setup>
-import { ref, inject } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import useSessionStore from '@/stores/session'
-import useAlbumsStore from '@/stores/albums'
+import useCollectionStore from '@/stores/collection'
 
-const API = inject('API');
-const router = useRouter()
-const session = useSessionStore()
-const albumsStore = useAlbumsStore()
+//
+const router = useRouter();
+const session = useSessionStore();
+const collectionStore = useCollectionStore();
 
 // data
 const menuOpen = ref();
@@ -19,8 +19,7 @@ const menuItems = ref([
                 label: 'Refresh',
                 icon: 'pi pi-refresh',
                 command: async() => {
-                    //albumsStore.discs = await API.get('/search/albums');
-                    await albumsStore.loadAlbums();
+                    await collectionStore.load();
                 }
             },
             {
@@ -58,13 +57,20 @@ const toggleMenu = (event) => {
             />
             <Menu ref="menuOpen" id="overlay_menu" :model="menuItems" :popup="true" />
 
+            <Button 
+                icon="pi pi-home"
+                @click="router.push({ name: 'collection' })"
+                class="mr-2" 
+                text severity="secondary" 
+            />
+
             <InputText 
-                    v-model="albumsStore.filter"
+                    v-model="collectionStore.filter"
                     placeholder="Search" 
                     type="text" 
                     size="small"
             />
-            <Button icon="pi pi-times-circle" class="mr-2" severity="secondary" text @click="albumsStore.filter=''" />
+            <Button icon="pi pi-times-circle" class="mr-2" severity="secondary" text @click="collectionStore.filter=''" />
         </template>
 
         <template #end>

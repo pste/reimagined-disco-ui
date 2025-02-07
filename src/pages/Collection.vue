@@ -1,34 +1,43 @@
 <script setup>
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import Album from '@/components/Album.vue'
+import useCollectionStore from '@/stores/collection'
 
-import useAlbumsStore from '@/stores/albums'
-const albumsStore = useAlbumsStore()
+//
+const router = useRouter()
+const collectionStore = useCollectionStore();
 
 // computed
 const sortedList = computed(() => {
-    return albumsStore.filteredAlbums.sort( (a,b) => {
-        if (a.artist < b.artist) return -1;
-        if (a.artist > b.artist) return 1;
-        if (a.year < b.year) return -1;
-        if (a.year > b.year) return 1;
+    return collectionStore.filteredData.sort( (a,b) => {
+        if (a.name < b.name) return -1;
+        if (a.name > b.name) return 1;
         return 0;
     });
 })
+
+// methods
+function gotoAlbums(id) {
+    router.push({ name: 'albums', params: { artistid: id }});
+}
 </script>
 
 <template>
     <div class="collection">
-        <Album v-for="item in sortedList"
-            :key="item.album.id"
-            :id="item.album_id"
-            :artist="item.artist"
-            :title="item.album"
-            :year="item.year"
-            :genre="item.genre"
-            :cover="item.cover"
-        >
-        </Album>
+        <div class="list" v-for="item in sortedList">
+            <Album
+                class="shadowed"
+                :id="item.artist_id"
+                :artist="item.name"
+                :cover="item.cover" 
+                @click="gotoAlbums(item.artist_id)"
+            >
+            </Album>
+            <div class="info">
+                <span class="artist">{{ item.name }}</span>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -37,5 +46,23 @@ const sortedList = computed(() => {
     width: 98vw;
     height: 90vh;
     text-align: left;
+}
+.list {
+    display: inline-block;
+}
+.shadowed {
+    border-radius: 10px;
+    box-shadow: 3px 3px 1px 0px #8b8b92, 6px 6px 1px 0px #38383b, 9px 9px 1px 0px #000000;
+}
+.info {
+    width: 150px;
+    height: 50px;
+}
+.artist {
+    font-size: .9em;
+    display: block;
+    text-overflow: ellipsis;
+    overflow:hidden;
+    white-space: nowrap;
 }
 </style>

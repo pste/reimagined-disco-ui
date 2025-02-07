@@ -6,9 +6,9 @@ const API = inject('API');
 
 // pinia 
 import useSessionStore from '@/stores/session'
-import useAlbumsStore from '@/stores/albums'
+import useCollectionStore from '@/stores/collection'
 const sessionStore = useSessionStore();
-const albumsStore = useAlbumsStore();
+const collectionStore = useCollectionStore();
 
 // methods 
 async function login() {
@@ -18,7 +18,7 @@ async function login() {
         name: "Sepo"
     })
     // 
-    await albumsStore.loadAlbums() // .discs = await API.get('/search/albums'); // , { artistid: route.params.artistid });
+    await collectionStore.load()
     // 
     router.push( {name: 'collection' } );
 }

@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '../pages/Login.vue'
 import CollectionView from '../pages/Collection.vue'
-//import ArtistsView from '../pages/Artists.vue'
+import ArtistView from '../pages/Artist.vue'
 import useSessionStore from '@/stores/session'
 
 const router = createRouter({
@@ -18,12 +18,12 @@ const router = createRouter({
         component: CollectionView,
         meta: { requiresAuth: true }
     },
-    /*{
+    {
         path: '/albums/:artistid',
         name: 'albums',
-        component: AlbumsView,
+        component: ArtistView,
         meta: { requiresAuth: true }
-    },
+    },/*
     {
       path: '/about',
       name: 'about',

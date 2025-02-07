@@ -22,6 +22,8 @@ const image = computed(() => {
     }
     return null;
 })
+
+
 </script>
 
 <template>
@@ -29,12 +31,12 @@ const image = computed(() => {
     <div class="album">
         <div    class="cover" 
                 :style="{backgroundImage: `url('${image}')`}"
-                v-tooltip.bottom="`${title}`"
+                v-tooltip.bottom="{ value: title, disabled: (title)?false:true}"
         ></div>
-        <div class="info">
+        <!--<div class="info">
             <span class="artist">{{ artist }}</span>
-            <span class="title">{{ title }}</span>
-        </div>
+            <span class="title" v-if="title">{{ albumTitle }}</span>
+        </div>-->
     </div>
 </template>
 
@@ -54,6 +56,7 @@ const image = computed(() => {
     width: 150px;
     height: 150px;
 }
+/*
 .info {
     width: 150px;
     height: 50px;
@@ -71,5 +74,5 @@ const image = computed(() => {
     text-overflow: ellipsis;
     overflow:hidden;
     white-space: nowrap;
-}
+}*/
 </style>
