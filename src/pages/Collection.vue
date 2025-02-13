@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import Album from '@/components/Album.vue'
+import Disc from '@/components/Disc.vue'
 import useCollectionStore from '@/stores/collection'
 
 //
@@ -26,14 +26,14 @@ function gotoAlbums(id) {
 <template>
     <div class="collection">
         <div class="list" v-for="item in sortedList">
-            <Album
-                class="shadowed"
+            <Disc
+                class="shadowed clickable"
                 :id="item.artist_id"
                 :artist="item.name"
                 :cover="item.cover" 
                 @click="gotoAlbums(item.artist_id)"
             >
-            </Album>
+            </Disc>
             <div class="info">
                 <span class="artist">{{ item.name }}</span>
             </div>

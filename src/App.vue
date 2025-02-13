@@ -1,6 +1,11 @@
 <script setup>
 import { RouterView } from 'vue-router'
-import ToolBar from './components/ToolBar.vue';
+import ToolBar from './components/ToolBar.vue'
+import { VueSound } from 'vue-sound'
+
+import usePlayerStore from './stores/player'
+const player = usePlayerStore();
+
 </script>
 
 <template>
@@ -9,6 +14,13 @@ import ToolBar from './components/ToolBar.vue';
     </header>
 
     <RouterView />
+
+    <vue-sound
+        v-if="player.hasSong"
+        :title="player.title"
+        :details="player.album + ' - ' + player.artist"
+        :file="player.url"
+    />
 </template>
 
 <style>

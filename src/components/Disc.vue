@@ -1,5 +1,6 @@
 <script setup>
-import { computed } from 'vue'
+import { inject, computed } from 'vue'
+const ImageData = inject('ImageData');
 
 // props
 const props = defineProps({
@@ -15,10 +16,12 @@ const props = defineProps({
 const image = computed(() => {
     const buffer = props?.cover?.data;
     if (buffer) {
+        return ImageData.toBase64(buffer);
+        /*
         const arr = new Uint8Array(buffer);
         const str = String.fromCharCode.apply(null, arr);
         const base64 = btoa(str);
-        return `data:image/png;base64, ${base64}`;
+        return `data:image/png;base64, ${base64}`;*/
     }
     return null;
 })

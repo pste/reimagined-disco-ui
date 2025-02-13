@@ -1,11 +1,13 @@
 <script setup>
 import { ref, computed, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import Album from '@/components/Album.vue'
+import Disc from '@/components/Disc.vue'
+import useDiscStore from '@/stores/disc'
 
 // init stuff
 const route = useRoute();
-//const router = useRouter();
+const discStore = useDiscStore();
+const router = useRouter();
 const API = inject('API');
 
 // data
@@ -47,6 +49,12 @@ function albumTitle(item) {
     }
 }
 
+// methods
+function gotoAlbum(disc) {
+    discStore.store(disc);
+    router.push({ name: 'album' }); // , params: { albumid: disc.album_id }});
+}
+
 //
 loadAlbums()
 </script>
@@ -60,15 +68,16 @@ loadAlbums()
 
     <div class="collection">
         <div class="list" v-for="item in sortedList">
-            <Album
+            <Disc class="clickable"
                 :id="item.album_id"
                 :artist="item.artist"
                 :title="item.album"
                 :year="item.year"
                 :genre="item.genre"
                 :cover="item.cover"
+                @click="gotoAlbum(item)"
             >
-            </Album>
+            </Disc>
             <div class="info">
                 <span class="artist">{{ item.name }}</span>
                 <span class="title" >{{ albumTitle(item) }}</span>
