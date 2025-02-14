@@ -1,4 +1,6 @@
 import { defineStore } from 'pinia';
+import useGlobalsStore from '@/stores/globals'
+
 
 const useDiscStore = defineStore('disc', {
     state: () => ({
@@ -6,6 +8,7 @@ const useDiscStore = defineStore('disc', {
        artist: "",
        album: "",
        cover: null,
+       title: "",
        songUrl: null,
     }),
 
@@ -15,6 +18,12 @@ const useDiscStore = defineStore('disc', {
             this.artist = item.artist;
             this.album = item.album;
             this.cover = item.cover.data;
+        },
+
+        stream(song_id, title) {
+            const globalsStore = useGlobalsStore();
+            const url = new URL('/stream/song', globalsStore.apiURL);
+            this.songUrl = url + '?id=' + song_id
         },
 
         clear() {

@@ -1,7 +1,7 @@
 <script setup>
 import { RouterView } from 'vue-router'
 import ToolBar from './components/ToolBar.vue'
-import { VueSound } from 'vue-sound'
+import AudioPlayer from '@/components/AudioPlayer.vue'
 </script>
 
 <template>
@@ -11,17 +11,22 @@ import { VueSound } from 'vue-sound'
 
     <RouterView />
 
-   <!-- <vue-sound
-        v-if="false && player.hasSong"
-        :title="player.title"
-        :details="player.album + ' - ' + player.artist"
-        :file="player.url"
-    />-->
+    <footer>
+        <AudioPlayer />
+    </footer>
 </template>
 
 <style>
 body {
     background-color: var(--p-slate-600);
+}
+
+footer {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  text-align: center;
 }
 /*
 header {

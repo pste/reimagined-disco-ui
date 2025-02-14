@@ -45,7 +45,7 @@ const toggleMenu = (event) => {
 </script>
 
 <template>
-    <Menubar  v-if="session.loggedIn">
+    <Menubar v-if="session.loggedIn">
         <template #start>
             <Button 
                 icon="pi pi-bars" 
