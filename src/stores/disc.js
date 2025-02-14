@@ -13,7 +13,7 @@ const useDiscStore = defineStore('disc', {
     }),
 
     actions: {
-        store(item) {
+        loadAlbum(item) {
             this.album_id = item.album_id;
             this.artist = item.artist;
             this.album = item.album;
@@ -23,14 +23,16 @@ const useDiscStore = defineStore('disc', {
         stream(song_id, title) {
             const globalsStore = useGlobalsStore();
             const url = new URL('/stream/song', globalsStore.apiURL);
-            this.songUrl = url + '?id=' + song_id
+            this.songUrl = url + '?id=' + song_id;
+            this.title = title;
         },
 
         clear() {
             this.album_id = null;
             this.artist = "";
             this.album = "";
-            this.cover = null,
+            this.cover = null;
+            this.title = "";
             this.songUrl = null;
         },
     }

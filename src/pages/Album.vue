@@ -1,6 +1,9 @@
 <script setup>
 import { inject, computed, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import useDiscStore from '@/stores/disc'
+
+const route = useRoute();
 
 //
 const API = inject('API');
@@ -8,7 +11,7 @@ const ImageData = inject('ImageData');
 const discStore = useDiscStore();
 
 // data
-const sortedList = ref([]);
+const sortedSongs = ref([]);
 const selectedSong = ref();
 
 // watch
@@ -29,15 +32,19 @@ const image = computed(() => {
 
 // methods 
 async function loadSongs() {
-    if (discStore.album_id) {
-       const data = await API.get('/search/songs', { albumid: discStore.album_id })
-       sortedList.value = data.sort( (a,b) => {
+    const albumid = route.params.albumid;
+    if (albumid) {
+        const album = await API.get('/search/albums', { albumid });
+        discStore.loadAlbum(album[0]); // TODO better way
+        //
+        const songs = await API.get('/search/songs', { albumid });
+        sortedSongs.value = songs.sort( (a,b) => {
             if (a.disc_nr < b.disc_nr) return -1;
             if (a.disc_nr > b.disc_nr) return 1;
             if (a.track_nr < b.track_nr) return -1;
             if (a.track_nr > b.track_nr) return 1;
             return 0;
-        })
+         })
     }
     else {
         console.error('Bad Route: no album found');
@@ -58,7 +65,7 @@ loadSongs();
         <template #content>
             <Listbox 
                 v-model="selectedSong" 
-                :options="sortedList" 
+                :options="sortedSongs" 
                 optionLabel="title" 
                 class="w-full md:w-56" 
             >

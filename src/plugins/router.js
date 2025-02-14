@@ -27,7 +27,7 @@ const router = createRouter({
         meta: { requiresAuth: true }
     },
     {
-        path: '/album',
+        path: '/album/:albumid',
         name: 'album',
         component: AlbumView,
         meta: { requiresAuth: true }

@@ -1,6 +1,5 @@
 import { createApp } from 'vue';
 import './style.css';
-import 'vue-sound/style.css';
 import App from './App.vue';
 
 import { registerPlugins } from '@/plugins';

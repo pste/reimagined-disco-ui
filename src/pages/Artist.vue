@@ -2,11 +2,11 @@
 import { ref, computed, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Disc from '@/components/Disc.vue'
-import useDiscStore from '@/stores/disc'
+//import useDiscStore from '@/stores/disc'
 
 // init stuff
 const route = useRoute();
-const discStore = useDiscStore();
+//const discStore = useDiscStore();
 const router = useRouter();
 const API = inject('API');
 
@@ -51,8 +51,8 @@ function albumTitle(item) {
 
 // methods
 function gotoAlbum(disc) {
-    discStore.store(disc);
-    router.push({ name: 'album' }); // , params: { albumid: disc.album_id }});
+    // discStore.album(disc);
+    router.push({ name: 'album', params: { albumid: disc.album_id }});
 }
 
 //
