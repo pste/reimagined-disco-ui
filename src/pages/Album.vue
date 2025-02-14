@@ -1,13 +1,10 @@
 <script setup>
 import { inject, computed, ref, watch } from 'vue'
-import AudioPlayer from '@/components/AudioPlayer.vue'
 import useDiscStore from '@/stores/disc'
-import useGlobalsStore from '@/stores/globals'
 
 //
 const API = inject('API');
 const ImageData = inject('ImageData');
-const globalsStore = useGlobalsStore();
 const discStore = useDiscStore();
 
 // data
@@ -17,8 +14,7 @@ const selectedSong = ref();
 // watch
 watch(selectedSong, (val) => {
         if (val.song_id) {
-            const url = new URL('/song', globalsStore.apiURL);
-            discStore.songUrl = url + '?id=' + val.song_id;
+            discStore.stream(val.song_id, val.title);
         }
 })
 
@@ -65,13 +61,19 @@ loadSongs();
                 :options="sortedList" 
                 optionLabel="title" 
                 class="w-full md:w-56" 
-            />
+            >
+                <template #option="slotProps">
+                    <div class="flex items-center">
+                        <div>{{ slotProps.option.track_nr }}. {{ slotProps.option.title }}</div>
+                    </div>
+                </template>
+            </Listbox>
         </template>
-        <template #footer>
+        <!--<template #footer>
             <div class="flex gap-4 mt-1">
                 <AudioPlayer />
             </div>
-        </template>
+        </template>-->
     </Card>
 </template>
 
