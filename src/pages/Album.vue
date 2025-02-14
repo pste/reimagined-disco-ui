@@ -1,15 +1,14 @@
 <script setup>
 import { inject, computed, ref, watch } from 'vue'
+import AudioPlayer from '@/components/AudioPlayer.vue'
 import useDiscStore from '@/stores/disc'
 import useGlobalsStore from '@/stores/globals'
-import usePlayerStore from '@/stores/player'
 
 //
 const API = inject('API');
 const ImageData = inject('ImageData');
-const discStore = useDiscStore();
 const globalsStore = useGlobalsStore();
-const player = usePlayerStore();
+const discStore = useDiscStore();
 
 // data
 const sortedList = ref([]);
@@ -19,40 +18,23 @@ const selectedSong = ref();
 watch(selectedSong, (val) => {
         if (val.song_id) {
             const url = new URL('/song', globalsStore.apiURL);
-            player.url =  url + '?id=' + val.song_id;
-            player.artist = "";
-            player.album = "";
-            player.title = "";
+            discStore.songUrl = url + '?id=' + val.song_id;
         }
 })
 
 // computed
-const disc = computed(() => {
-    return discStore.disc;
-})
-
-const songUrl = computed(() => {
-    const song_id = selectedSong?.value?.song_id;
-    if (song_id) {
-        const url = new URL('/song', globalsStore.apiURL);
-        return url + '?id=' + song_id;
-    }
-    return null;
-})
-
 const image = computed(() => {
-    const buffer = discStore?.disc?.cover?.data;
+    const buffer = discStore.cover;
     if (buffer) {
         return ImageData.toBase64(buffer);
     }
     return null;
 })
 
-
 // methods 
 async function loadSongs() {
-    if (discStore.disc) {
-       const data = await API.get('/search/songs', { albumid: discStore.disc.album_id })
+    if (discStore.album_id) {
+       const data = await API.get('/search/songs', { albumid: discStore.album_id })
        sortedList.value = data.sort( (a,b) => {
             if (a.disc_nr < b.disc_nr) return -1;
             if (a.disc_nr > b.disc_nr) return 1;
@@ -75,8 +57,8 @@ loadSongs();
         <template #header>
             <img style="width:100%" :src="image" />
         </template>
-        <template #title>{{ disc.album }}</template>
-        <template #subtitle>{{ disc.artist }}</template>
+        <template #title>{{ discStore.album }}</template>
+        <template #subtitle>{{ discStore.artist }}</template>
         <template #content>
             <Listbox 
                 v-model="selectedSong" 
@@ -87,12 +69,7 @@ loadSongs();
         </template>
         <template #footer>
             <div class="flex gap-4 mt-1">
-                <!--<audio controls >
-                    <source :src="songUrl" type="audio/mpeg">
-                    Your browser does not support the audio tag.
-                </audio>
-                <Button label="Play" severity="secondary" outlined class="w-full" />
-                <Button label="Stop" class="w-full" />-->
+                <AudioPlayer />
             </div>
         </template>
     </Card>
@@ -105,9 +82,5 @@ loadSongs();
   margin-top: 10px;
   margin-left: auto;
   margin-right: auto;
-}
-
-audio {
-    width: 100%;
 }
 </style>

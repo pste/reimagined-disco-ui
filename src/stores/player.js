@@ -14,10 +14,10 @@ const usePlayerStore = defineStore('player', {
         },
     },
 
-    actions: {
+    actions: {/*
         load(fileurl) {
-            this.file = fileurl;
-        },
+            this.url = fileurl;
+        },*/
     }
 })
 
