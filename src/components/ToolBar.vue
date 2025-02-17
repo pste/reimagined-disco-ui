@@ -13,8 +13,22 @@ const collectionStore = useCollectionStore();
 const menuOpen = ref();
 const menuItems = ref([
     {
-        label: 'Options',
+        label: 'Menu',
         items: [
+            {
+                label: 'Home',
+                icon: 'pi pi-home',
+                command: () => {
+                    router.push({ name: 'collection' });
+                }
+            },
+            {
+                label: 'Sources',
+                icon: 'pi pi-folder',
+                command: () => {
+                    router.push({ name: 'sources' });
+                }
+            },
             {
                 label: 'Refresh',
                 icon: 'pi pi-refresh',
@@ -22,13 +36,6 @@ const menuItems = ref([
                     await collectionStore.load();
                 }
             },
-            {
-                label: 'Export',
-                icon: 'pi pi-upload',
-                command: () => {
-                    // TODO
-                }
-            }
         ]
     }
 ]);
@@ -56,14 +63,7 @@ const toggleMenu = (event) => {
                 aria-controls="overlay_menu" 
             />
             <Menu ref="menuOpen" id="overlay_menu" :model="menuItems" :popup="true" />
-
-            <Button 
-                icon="pi pi-home"
-                @click="router.push({ name: 'collection' })"
-                class="mr-2" 
-                text severity="secondary" 
-            />
-
+            
             <InputText 
                     v-model="collectionStore.filter"
                     placeholder="Search" 
@@ -85,5 +85,6 @@ const toggleMenu = (event) => {
 <style scoped>
 .p-menubar {
     padding: 0;
+    margin-bottom: 5px;
 }
 </style>

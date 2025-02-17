@@ -5,6 +5,7 @@ import LoginView from '../pages/Login.vue'
 import CollectionView from '../pages/Collection.vue'
 import ArtistView from '../pages/Artist.vue'
 import AlbumView from '../pages/Album.vue'
+import SourcesView from '../pages/Sources.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -32,6 +33,13 @@ const router = createRouter({
         component: AlbumView,
         meta: { requiresAuth: true }
     },
+    {
+        path: '/sources',
+        name: 'sources',
+        component: SourcesView,
+        meta: { requiresAuth: true }
+    },
+    
     /*
     {
       path: '/about',
