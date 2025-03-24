@@ -10,7 +10,7 @@ const collectionStore = useCollectionStore();
 
 // computed
 const sortedList = computed(() => {
-    return collectionStore.filteredData.sort( (a,b) => {
+    return collectionStore.artists.sort( (a,b) => {
         if (a.name < b.name) return -1;
         if (a.name > b.name) return 1;
         return 0;
@@ -28,9 +28,8 @@ function gotoAlbums(id) {
         <div class="list" v-for="item in sortedList">
             <Disc
                 class="shadowed clickable"
-                :id="item.artist_id"
+                :artist_id="item.artist_id"
                 :artist="item.name"
-                :cover="item.cover" 
                 @click="gotoAlbums(item.artist_id)"
             >
             </Disc>

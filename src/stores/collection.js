@@ -6,13 +6,41 @@ const useCollectionStore = defineStore('collection', () => {
     const API = inject('API');
     const items = ref([]);
     const filter = ref('');
+    const filteredData = computed(() => {
+        const flt = filter.value.toLowerCase();
+        return items.value.filter( el => el.name.toLowerCase().indexOf(flt) >= 0 );
+    });
 
     return {
         filter,
         // getter
-        filteredData: computed(() => {
-            const flt = filter.value.toLowerCase();
-            return items.value.filter( el => el.name.toLowerCase().indexOf(flt) >= 0 );
+        filteredData,
+        artists: computed(() => {
+            // needs artist_id, name
+            const map = new Map();
+            for (const item of filteredData.value) {
+                const id = item.artist_id;
+                if (map.has(id)) {
+                    const item2 = map.get(id);
+                    if (item.year > item2.year) {
+                        map.set(id, item);
+                    }
+                }
+                else {
+                    map.set(id, item);
+                }
+            }
+            return Array.from(map.values())
+
+            /*return filteredData.value.map( item => ( // remove unneded fields
+                {
+                    artist_id: item.artist_id,
+                    name: item.name,
+                }
+            ))
+            .filter((currentValue, index, arr) => { // remove dupes (TODO sort to keep the most recent album?)
+                return arr.findIndex( el => el.artist_id === currentValue.artist_id ) === index
+            });*/
         }),
         // actions
         load: async function() {
@@ -22,4 +50,3 @@ const useCollectionStore = defineStore('collection', () => {
 })
 
 export default useCollectionStore;
-

@@ -15,7 +15,12 @@ loadSources()
 </script>
 
 <template>
-    <DataTable :value="sources" stripedRows>
+    <DataTable 
+                :value="sources" 
+                stripedRows 
+                editMode="cell" 
+                @cell-edit-complete="onCellEditComplete"
+    >
         <Column headerStyle="width: 50px">
             <template #header="{ column }">
                 <Button icon="pi pi-plus-circle" severity="secondary" />
@@ -24,7 +29,14 @@ loadSources()
                 <Button icon="pi pi-minus-circle" severity="secondary" />
             </template>
         </Column>
-        <Column field="path" header="Path" ></Column>
+        
+        <Column field="path" header="Path" bodyClass="long-text-col" >
+            <template #editor="{ data, field }">
+                <template>
+                    <InputText v-model="data[field]" autofocus fluid />
+                </template>
+            </template>
+        </Column>
     </DataTable>
 </template>
 
@@ -32,5 +44,8 @@ loadSources()
 :deep(.p-datatable-table-container) {
     border-radius: var(--p-menubar-border-radius);
     min-width: 50rem;
+}
+:deep(.long-text-col) {
+    word-break:break-all;
 }
 </style>

@@ -1,45 +1,37 @@
 <script setup>
-import { inject, computed } from 'vue'
+import { inject, computed, ref } from 'vue'
+import useCoversStore from '@/stores/covers'
+
+// 
 const ImageData = inject('ImageData');
+const coversStore = useCoversStore();
 
 // props
 const props = defineProps({
-    id: Number,
+    artist_id: Number,
     year: Number,
     genre: String,
     artist: String,
     title: String,
-    cover: Object, // type: Buffer, data: Array
 })
 
 // computed
-const image = computed(() => {
-    const buffer = props?.cover?.data;
+const image = ref(null)
+async function loadImage() {
+    const buffer = await coversStore.get(props?.artist_id);
     if (buffer) {
-        return ImageData.toBase64(buffer);
-        /*
-        const arr = new Uint8Array(buffer);
-        const str = String.fromCharCode.apply(null, arr);
-        const base64 = btoa(str);
-        return `data:image/png;base64, ${base64}`;*/
+        image.value = ImageData.toBase64(buffer);
     }
-    return null;
-})
-
-
+}
+loadImage()
 </script>
 
 <template>
-     <!-- <img :src="image" />-->
     <div class="album">
         <div    class="cover" 
                 :style="{backgroundImage: `url('${image}')`}"
                 v-tooltip.bottom="{ value: title, disabled: (title)?false:true}"
         ></div>
-        <!--<div class="info">
-            <span class="artist">{{ artist }}</span>
-            <span class="title" v-if="title">{{ albumTitle }}</span>
-        </div>-->
     </div>
 </template>
 

@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia';
 import useGlobalsStore from '@/stores/globals'
 
-
 const useDiscStore = defineStore('disc', {
     state: () => ({
        album_id: null,
