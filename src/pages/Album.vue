@@ -22,17 +22,17 @@ const album = collectionStore.getAlbum(route.params.albumid);
 // data
 const sortedSongs = ref([]);
 const selectedSong = ref();
+const image = ref(null); // can't have async computed, so I'm using a ref
 
 // watch
 watch(selectedSong, (sel) => {
-    const song_id = sel.value.song_id;
+    const song_id = sel?.value?.song_id;
     if (song_id) {
         playerStore.stream(song_id, val.title);
     }
 })
 
-// computed
-const image = ref(null);
+// methods 
 async function loadCover() {
     const buffer = await coversStore.get(route.params.albumid);
     if (buffer) {
@@ -42,9 +42,7 @@ async function loadCover() {
         image.value = null;
     }
 }
-loadCover();
 
-// methods 
 async function loadSongs() {
     const albumid = route.params.albumid;
     if (albumid) {
@@ -63,7 +61,9 @@ async function loadSongs() {
     }
 }
 
+// init
 loadSongs();
+loadCover();
 </script>
 
 <template>
