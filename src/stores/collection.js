@@ -12,16 +12,19 @@ const useCollectionStore = defineStore('collection', () => {
     });
 
     return {
+        // the filter (can be empty to see everyting)
         filter,
-        // getter
+        // getter: the filtered collection
         filteredData,
+        // getter: the collection page (all of the artists)
         artists: computed(() => {
-            // needs artist_id, name
+            //
             const map = new Map();
             for (const item of filteredData.value) {
                 const id = item.artist_id;
                 if (map.has(id)) {
                     const item2 = map.get(id);
+                    // keeping only the most recent album info as artist cover
                     if (item.year > item2.year) {
                         map.set(id, item);
                     }
@@ -31,18 +34,12 @@ const useCollectionStore = defineStore('collection', () => {
                 }
             }
             return Array.from(map.values())
-
-            /*return filteredData.value.map( item => ( // remove unneded fields
-                {
-                    artist_id: item.artist_id,
-                    name: item.name,
-                }
-            ))
-            .filter((currentValue, index, arr) => { // remove dupes (TODO sort to keep the most recent album?)
-                return arr.findIndex( el => el.artist_id === currentValue.artist_id ) === index
-            });*/
         }),
-        // actions
+        // actions: the artist discography
+        getDiscography: function(artist_id) {
+            return filteredData.value.filter( el => el.artist_id == artist_id )
+        },
+        // actions: load and caches the collection
         load: async function() {
             items.value = await API.get('/collection');
         }

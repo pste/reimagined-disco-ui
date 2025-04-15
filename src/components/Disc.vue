@@ -1,5 +1,5 @@
 <script setup>
-import { inject, computed, ref } from 'vue'
+import { inject, ref } from 'vue'
 import useCoversStore from '@/stores/covers'
 
 // 
@@ -8,17 +8,14 @@ const coversStore = useCoversStore();
 
 // props
 const props = defineProps({
-    artist_id: Number,
-    year: Number,
-    genre: String,
-    artist: String,
+    album_id: Number,
     title: String,
 })
 
-// computed
+//
 const image = ref(null)
 async function loadImage() {
-    const buffer = await coversStore.get(props?.artist_id);
+    const buffer = await coversStore.get(props?.album_id);
     if (buffer) {
         image.value = ImageData.toBase64(buffer);
     }
@@ -51,23 +48,4 @@ loadImage()
     width: 150px;
     height: 150px;
 }
-/*
-.info {
-    width: 150px;
-    height: 50px;
-}
-.artist {
-    font-size: .6em;
-    display: block;
-    text-overflow: ellipsis;
-    overflow:hidden;
-    white-space: nowrap;
-}
-.title {
-    font-size: .8em;
-    display: block;
-    text-overflow: ellipsis;
-    overflow:hidden;
-    white-space: nowrap;
-}*/
 </style>

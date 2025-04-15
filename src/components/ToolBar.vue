@@ -16,7 +16,7 @@ const menuItems = ref([
         label: 'Menu',
         items: [
             {
-                label: 'Home',
+                label: 'Collection',
                 icon: 'pi pi-home',
                 command: () => {
                     router.push({ name: 'collection' });

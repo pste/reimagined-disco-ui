@@ -18,7 +18,7 @@ const sortedList = computed(() => {
 })
 
 // methods
-function gotoAlbums(id) {
+function gotoArtist(id) {
     router.push({ name: 'albums', params: { artistid: id }});
 }
 </script>
@@ -28,9 +28,9 @@ function gotoAlbums(id) {
         <div class="list" v-for="item in sortedList">
             <Disc
                 class="shadowed clickable"
-                :artist_id="item.artist_id"
+                :album_id="item.album_id"
                 :artist="item.name"
-                @click="gotoAlbums(item.artist_id)"
+                @click="gotoArtist(item.artist_id)"
             >
             </Disc>
             <div class="info">

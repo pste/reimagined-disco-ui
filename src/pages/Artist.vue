@@ -2,6 +2,33 @@
 import { ref, computed, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Disc from '@/components/Disc.vue'
+import useCollectionStore from '@/stores/collection'
+
+// init stuff
+const route = useRoute();
+const collectionStore = useCollectionStore();
+
+//
+const artistid = route.params.artistid;
+const sortedList = collectionStore.getDiscography(artistid);
+
+// computed
+const artistName = computed(() => {
+    if (sortedList.length > 0) {
+        return sortedList[0].name;
+    }
+    return '...'
+})
+
+function albumTitle(item) {
+    if (item.year) {
+        return `${item.year}. ${item.title}`;
+    }
+    else {
+        return item.title;
+    }
+}
+/*
 //import useDiscStore from '@/stores/disc'
 
 // init stuff
@@ -40,14 +67,7 @@ async function loadAlbums() {
     }
 }
 
-function albumTitle(item) {
-    if (item.year) {
-        return `${item.year}. ${item.album}`;
-    }
-    else {
-        return item.album;
-    }
-}
+
 
 // methods
 function gotoAlbum(disc) {
@@ -56,7 +76,7 @@ function gotoAlbum(disc) {
 }
 
 //
-loadAlbums()
+loadAlbums()*/
 </script>
 
 <template>
@@ -69,12 +89,8 @@ loadAlbums()
     <div class="collection">
         <div class="list" v-for="item in sortedList">
             <Disc class="clickable"
-                :id="item.album_id"
-                :artist="item.artist"
-                :title="item.album"
-                :year="item.year"
-                :genre="item.genre"
-                :cover="item.cover"
+                :album_id="item.album_id"
+                :title="item.title"
                 @click="gotoAlbum(item)"
             >
             </Disc>
