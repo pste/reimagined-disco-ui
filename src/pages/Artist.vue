@@ -1,10 +1,11 @@
 <script setup>
-import { ref, computed, inject } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import Disc from '@/components/Disc.vue'
 import useCollectionStore from '@/stores/collection'
 
 // init stuff
+const router = useRouter();
 const route = useRoute();
 const collectionStore = useCollectionStore();
 
@@ -28,55 +29,12 @@ function albumTitle(item) {
         return item.title;
     }
 }
-/*
-//import useDiscStore from '@/stores/disc'
-
-// init stuff
-const route = useRoute();
-//const discStore = useDiscStore();
-const router = useRouter();
-const API = inject('API');
-
-// data
-const sortedList = ref([])
-
-// computed
-const artistName = computed(() => {
-    if (sortedList.value.length > 0) {
-        return sortedList.value[0].artist;
-    }
-    return '...'
-})
-
-// methods 
-async function loadAlbums() {
-    const artistid = route.params.artistid;
-    if (artistid) {
-       const data = await API.get('/search/albums', { artistid })
-       sortedList.value = data.sort( (a,b) => {
-            if (a.year < b.year) return -1;
-            if (a.year > b.year) return 1;
-            if (a.album < b.album) return -1;
-            if (a.album > b.album) return 1;
-            return 0;
-        })
-    }
-    else {
-        console.error('Bad Route: no album id found');
-        //router.push({ name: 'login' });
-    }
-}
-
-
 
 // methods
 function gotoAlbum(disc) {
     // discStore.album(disc);
     router.push({ name: 'album', params: { albumid: disc.album_id }});
 }
-
-//
-loadAlbums()*/
 </script>
 
 <template>

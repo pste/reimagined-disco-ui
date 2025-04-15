@@ -37,7 +37,11 @@ const useCollectionStore = defineStore('collection', () => {
         }),
         // actions: the artist discography
         getDiscography: function(artist_id) {
-            return filteredData.value.filter( el => el.artist_id == artist_id )
+            return items.value.filter( el => el.artist_id == artist_id )
+        },
+        // actions: the artist discography
+        getAlbum: function(album_id) {
+            return items.value.filter( el => el.album_id == album_id )
         },
         // actions: load and caches the collection
         load: async function() {

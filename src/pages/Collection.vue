@@ -18,8 +18,8 @@ const sortedList = computed(() => {
 })
 
 // methods
-function gotoArtist(id) {
-    router.push({ name: 'albums', params: { artistid: id }});
+function gotoArtist(artist_id) {
+    router.push({ name: 'albums', params: { artistid: artist_id }});
 }
 </script>
 

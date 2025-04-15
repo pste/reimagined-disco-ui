@@ -1,42 +1,53 @@
 <script setup>
 import { inject, computed, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import useDiscStore from '@/stores/disc'
+import { useRouter, useRoute } from 'vue-router'
+import useCollectionStore from '@/stores/collection'
+import usePlayerStore from '@/stores/player'
+import useCoversStore from '@/stores/covers'
 
+// init stuff
+const router = useRouter();
 const route = useRoute();
+const collectionStore = useCollectionStore();
+const playerStore = usePlayerStore();
+const coversStore = useCoversStore();
 
-//
+// 
 const API = inject('API');
 const ImageData = inject('ImageData');
-const discStore = useDiscStore();
+
+//
+const album = collectionStore.getAlbum(route.params.albumid);
 
 // data
 const sortedSongs = ref([]);
 const selectedSong = ref();
 
 // watch
-watch(selectedSong, (val) => {
-        if (val.song_id) {
-            discStore.stream(val.song_id, val.title);
-        }
+watch(selectedSong, (sel) => {
+    const song_id = sel.value.song_id;
+    if (song_id) {
+        playerStore.stream(song_id, val.title);
+    }
 })
 
 // computed
-const image = computed(() => {
-    const buffer = discStore.cover;
+const image = ref(null);
+async function loadCover() {
+    const buffer = await coversStore.get(route.params.albumid);
     if (buffer) {
-        return ImageData.toBase64(buffer);
+        image.value = ImageData.toBase64(buffer);
     }
-    return null;
-})
+    else {
+        image.value = null;
+    }
+}
+loadCover();
 
 // methods 
 async function loadSongs() {
     const albumid = route.params.albumid;
     if (albumid) {
-        const album = await API.get('/search/albums', { albumid });
-        discStore.loadAlbum(album[0]); // TODO better way
-        //
         const songs = await API.get('/search/songs', { albumid });
         sortedSongs.value = songs.sort( (a,b) => {
             if (a.disc_nr < b.disc_nr) return -1;
@@ -56,12 +67,13 @@ loadSongs();
 </script>
 
 <template>
+    {{ selectedSong }}
     <Card class="panel">
         <template #header>
             <img style="width:100%" :src="image" />
         </template>
-        <template #title>{{ discStore.album }}</template>
-        <template #subtitle>{{ discStore.artist }}</template>
+        <template #title>{{ album.title }}</template>
+        <template #subtitle>{{ album.name }}</template>
         <template #content>
             <Listbox 
                 v-model="selectedSong" 

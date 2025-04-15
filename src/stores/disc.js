@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import useGlobalsStore from '@/stores/globals'
-
+// TODO DEPRECATD
 const useDiscStore = defineStore('disc', {
     state: () => ({
        album_id: null,
