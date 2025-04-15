@@ -25,10 +25,9 @@ const selectedSong = ref();
 const image = ref(null); // can't have async computed, so I'm using a ref
 
 // watch
-watch(selectedSong, (sel) => {
-    const song_id = sel?.value?.song_id;
-    if (song_id) {
-        playerStore.stream(song_id, val.title);
+watch(selectedSong, (song) => {
+    if (song && song?.song_id) {
+        playerStore.stream(song.song_id, song.title, song.album, song.artist);
     }
 })
 
@@ -67,7 +66,6 @@ loadCover();
 </script>
 
 <template>
-    {{ selectedSong }}
     <Card class="panel">
         <template #header>
             <img style="width:100%" :src="image" />

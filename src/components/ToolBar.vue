@@ -2,12 +2,14 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import useSessionStore from '@/stores/session'
+import usePlayerStore from '@/stores/player'
 import useCollectionStore from '@/stores/collection'
 
 //
 const router = useRouter();
 const session = useSessionStore();
 const collectionStore = useCollectionStore();
+const playerStore = usePlayerStore();
 
 // data
 const menuOpen = ref();
@@ -42,6 +44,7 @@ const menuItems = ref([
 
 // methods
 function logout() {
+    playerStore.clear();
     session.userLogout();
     router.replace('/');
 }

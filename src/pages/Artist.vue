@@ -32,7 +32,6 @@ function albumTitle(item) {
 
 // methods
 function gotoAlbum(disc) {
-    // discStore.album(disc);
     router.push({ name: 'album', params: { albumid: disc.album_id }});
 }
 </script>

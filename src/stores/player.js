@@ -16,11 +16,20 @@ const usePlayerStore = defineStore('player', {
     },
 
     actions: {
-        stream(song_id, title) {
+        stream(song_id, title, album, artist) {
             const globalsStore = useGlobalsStore();
             const url = new URL('/stream/song', globalsStore.apiURL);
-            this.songUrl = url + '?id=' + song_id;
+            this.url = url + '?id=' + song_id;
             this.title = title;
+            this.album = album;
+            this.artist = artist;
+        },
+
+        clear() {
+            this.url = null;
+            this.title = '';
+            this.album = '';
+            this.artist = '';
         },
     }
 })

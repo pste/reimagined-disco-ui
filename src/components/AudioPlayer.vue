@@ -1,21 +1,26 @@
 <script setup>
 import { watch, useTemplateRef } from 'vue'
-import useDiscStore from '@/stores/disc'
+import usePlayerStore from '@/stores/player'
 
 //
-const discStore = useDiscStore();
 const audioElement = useTemplateRef('audioElement');
+const playerStore = usePlayerStore();
 
 // watch
-watch(discStore, () => {
-        if (discStore.songUrl) {
-            audioElement.value.src = discStore.songUrl;
-        }
+watch(playerStore, () => {
+    if (playerStore.url) {
+        audioElement.value.src = playerStore.url;
+    }
+    else {
+        audioElement.value.pause();
+        audioElement.value.currentTime = 0;
+        audioElement.value.src = "";
+    }
 })
 </script>
 
 <template>
-    <audio v-show="discStore.songUrl" ref="audioElement" controls>
+    <audio v-show="playerStore.hasSong" ref="audioElement" controls>
         Your browser does not support the audio tag.
     </audio>
 </template>
