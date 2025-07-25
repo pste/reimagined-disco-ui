@@ -3,7 +3,7 @@ import { ref } from 'vue';
 
 const useGlobalsStore = defineStore('globals', () => {
     const baseFolder = ref('.');
-    const apiURL = ref('http://127.0.0.1:3001')
+    const apiURL = ref(process.env.APIURL);
 
     return {
         baseFolder,
