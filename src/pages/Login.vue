@@ -1,5 +1,5 @@
 <script setup>
-import { inject } from 'vue'
+import { inject, ref } from 'vue'
 import router from '../plugins/router';
 
 const API = inject('API');
@@ -10,17 +10,21 @@ import useCollectionStore from '@/stores/collection'
 const sessionStore = useSessionStore();
 const collectionStore = useCollectionStore();
 
+// data
+const user = ref("");
+const pwd = ref("");
+
 // methods 
 async function login() {
-    //
-    await sessionStore.userLogin({
-        token: 12345678,
-        name: "Sepo"
-    })
-    // 
-    await collectionStore.load()
-    // 
-    router.push( {name: 'collection' } );
+    try {
+        await sessionStore.userLogin(user.value, pwd.value);
+        await collectionStore.load();
+        router.push( {name: 'collection' } );
+    }
+    catch (err) {
+        console.error(err);
+        await sessionStore.userLogout();
+    }
 }
 </script>
 
@@ -30,7 +34,9 @@ async function login() {
             <Card class="logincard">
                 <template #content>
                     <div class="centered-content">
-                        <Button @click="login">Login</Button>
+                        <InputText v-model="user" name="username" type="text" placeholder="Username" />
+                        <InputText v-model="pwd" name="password" type="password" />
+                        <Button @click="login" type="submit">Login</Button>
                     </div>
                 </template>
             </Card>
