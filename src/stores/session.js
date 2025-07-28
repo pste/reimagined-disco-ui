@@ -15,53 +15,21 @@ const useSessionStore = defineStore('session', () => {
             return user.value.name;
         }),
 
-        token: computed(() => {
-            return user.value.token;
-        }),
-
         loggedIn: computed(() => {
             return user.value.name !== "";
         }),
 
         // actions
-        userLogin(name, pwd) {
-            user.value.name = name || "";
-            user.value.token = pwd || "";
+        async userLogin(name, pwd) {
+            const dbuser = await API.post('/login', { username: name, password: pwd });
+            user.value.name = dbuser?.username || '';
         },
 
-        userLogout() {
+        async userLogout() {
+            await API.post('/logout', { });
             user.value.name = "";
-            user.value.token = "";
         }
     }
-    /*
-    state: () => ({
-        user: null
-    }),
-
-    getters: {
-        username(state) {
-            return state.user?.name || '';
-        },
-
-        token(state) {
-            return state?.user?.token;
-        },
-
-        loggedIn(state) {
-            return state.user !== null;
-        },
-    }, 
-    
-    actions: {
-        userLogin(val) {
-            this.user = val;
-        },
-
-        userLogout() {
-            this.user = null;
-        }
-    }*/
 })
 
 export default useSessionStore;
