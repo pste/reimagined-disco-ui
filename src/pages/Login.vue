@@ -23,7 +23,7 @@ async function login() {
     }
     catch (err) {
         console.error(err);
-        //await sessionStore.userLogout();
+        await sessionStore.userLogout();
     }
 }
 </script>
