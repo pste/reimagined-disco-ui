@@ -1,9 +1,29 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import useSessionStore from '@/stores/session'
 import usePlayerStore from '@/stores/player'
 import useCollectionStore from '@/stores/collection'
+import { useIdleObserver } from '@idle-observer/vue3'
+
+// idle timer
+const observer = useIdleObserver({
+    timeout: 60 * 1000, // secs
+    onIdle: () => {
+        if (playerStore.idle === false) {
+            observer.reset();
+        }
+        else {
+            logout();
+        }
+    },
+    onIdleWarning: () => {
+        console.log('User will be idle soon!');
+        
+    },
+    activityEvents: ['mousemove', 'keydown'],
+    idleWarningDuration: 3 * 1000, // secs
+})
 
 //
 const router = useRouter();
@@ -44,6 +64,7 @@ const menuItems = ref([
 
 // methods
 function logout() {
+    observer.destroy();
     playerStore.clear();
     session.userLogout();
     router.replace('/');
@@ -52,6 +73,11 @@ function logout() {
 const toggleMenu = (event) => {
     menuOpen.value.toggle(event);
 };
+
+// lifecycle
+onUnmounted(() => {
+    logout();
+})
 </script>
 
 <template>
