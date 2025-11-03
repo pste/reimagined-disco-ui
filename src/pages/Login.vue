@@ -34,8 +34,8 @@ async function login() {
             <Card class="logincard">
                 <template #content>
                     <div class="centered-content">
-                        <InputText v-model="user" name="username" type="text" placeholder="Username" />
-                        <InputText v-model="pwd" name="password" type="password" />
+                        <InputText id="txtname" v-model="user" name="username" type="text" placeholder="Username" />
+                        <InputText id="txtpwd"  v-model="pwd"  name="password" type="password" />
                         <Button @click="login" type="submit">Login</Button>
                     </div>
                 </template>
