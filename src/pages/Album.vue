@@ -20,15 +20,21 @@ const ImageData = inject('ImageData');
 const album = collectionStore.getAlbum(route.params.albumid);
 
 // data
-const sortedSongs = ref([]);
-const selectedSong = ref();
+const selectedSong = ref(); // id of the song selected
 const image = ref(null); // can't have async computed, so I'm using a ref
 
 // watch
-watch(selectedSong, (song) => {
-    if (song && song?.song_id) {
-        playerStore.stream(song.song_id, song.title, song.album, song.artist);
-    }
+/*
+watch(selectedSong, (val) => {
+    const idx = playerStore.playList.findIndex(x => x.song_id === val);
+    // console.log("found song", idx);
+    playerStore.play(idx);
+})*/
+
+// when the player changes, we update the UI
+watch(playerStore, () => {
+    console.log("watch play");
+    selectedSong.value = playerStore.songId;
 })
 
 // methods 
@@ -46,13 +52,20 @@ async function loadSongs() {
     const albumid = route.params.albumid;
     if (albumid) {
         const songs = await API.get('/search/songs', { albumid });
-        sortedSongs.value = songs.sort( (a,b) => {
+        const sortedSongs = songs.sort( (a,b) => {
             if (a.disc_nr < b.disc_nr) return -1;
             if (a.disc_nr > b.disc_nr) return 1;
             if (a.track_nr < b.track_nr) return -1;
             if (a.track_nr > b.track_nr) return 1;
             return 0;
-         })
+        });
+        //
+        playerStore.clear();
+        playerStore.enqueue(sortedSongs);
+        playerStore.play();
+        /*if (sortedSongs.length > 0) {
+            selectedSong.value = sortedSongs[0].song_id; // select the 1st, starts the player
+        }*/
     }
     else {
         console.error('Bad Route: no album found');
@@ -60,9 +73,18 @@ async function loadSongs() {
     }
 }
 
+// respond to user input over the playlist
+function nowPlaying() {
+    const idx = playerStore.playList.findIndex(x => x.song_id === selectedSong.value);
+    playerStore.play(idx);
+}
+
 // init
-loadSongs();
-loadCover();
+async function initcomponent() {
+  await loadSongs();
+  await loadCover();
+}
+initcomponent();
 </script>
 
 <template>
@@ -75,7 +97,9 @@ loadCover();
         <template #content>
             <Listbox 
                 v-model="selectedSong" 
-                :options="sortedSongs" 
+                :options="playerStore.playList"
+                @update:model-value="nowPlaying"
+                optionValue="song_id"
                 optionLabel="title" 
                 class="w-full md:w-56" 
             >
