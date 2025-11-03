@@ -1,6 +1,7 @@
 <script setup>
 import { inject, computed, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { storeToRefs } from 'pinia'
 import useCollectionStore from '@/stores/collection'
 import usePlayerStore from '@/stores/player'
 import useCoversStore from '@/stores/covers'
@@ -9,8 +10,9 @@ import useCoversStore from '@/stores/covers'
 const router = useRouter();
 const route = useRoute();
 const collectionStore = useCollectionStore();
-const playerStore = usePlayerStore();
 const coversStore = useCoversStore();
+const playerStore = usePlayerStore();
+const {songIndex} = storeToRefs(playerStore);
 
 // 
 const API = inject('API');
@@ -32,8 +34,8 @@ watch(selectedSong, (val) => {
 })*/
 
 // when the player changes, we update the UI
-watch(playerStore, () => {
-    console.log("watch play");
+watch(songIndex, () => {
+    console.log("album: watched playerstore.songIndex");
     selectedSong.value = playerStore.songId;
 })
 
@@ -62,7 +64,7 @@ async function loadSongs() {
         //
         playerStore.clear();
         playerStore.enqueue(sortedSongs);
-        playerStore.play();
+        //playerStore.play();
         /*if (sortedSongs.length > 0) {
             selectedSong.value = sortedSongs[0].song_id; // select the 1st, starts the player
         }*/
@@ -74,8 +76,9 @@ async function loadSongs() {
 }
 
 // respond to user input over the playlist
-function nowPlaying() {
+function updatedSelection() {
     const idx = playerStore.playList.findIndex(x => x.song_id === selectedSong.value);
+    console.log("album: selected idx:", idx)
     playerStore.play(idx);
 }
 
@@ -98,7 +101,7 @@ initcomponent();
             <Listbox 
                 v-model="selectedSong" 
                 :options="playerStore.playList"
-                @update:model-value="nowPlaying"
+                @update:model-value="updatedSelection"
                 optionValue="song_id"
                 optionLabel="title" 
                 class="w-full md:w-56" 

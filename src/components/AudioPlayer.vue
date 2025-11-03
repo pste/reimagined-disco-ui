@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, watch, useTemplateRef } from 'vue'
+import { storeToRefs } from 'pinia'
 import usePlayerStore from '@/stores/player'
 import useGlobalsStore from '@/stores/globals'
 
@@ -10,24 +11,24 @@ const globalsStore = useGlobalsStore();
 const nowPlaying = ref();
 const audioElement = useTemplateRef('audioElement');
 const playerStore = usePlayerStore();
-
+const { songIndex } = storeToRefs(playerStore)
 //
 onMounted(() => {
     audioElement.value.onended = (event) => { 
-        console.log("neeext!")
+        console.log("audioplayer: neeext!")
         playerStore.gotoNext();
     }
 
     audioElement.value.onerror = (event) => {
-        console.log('Player Error: ' + audioElement.value.error.code);
-        console.log('Player Error: ' + audioElement.value.error.message);
-        console.log('Player Error evt: ' + event.currentTarget.error.code);
-        console.log('Player Error evt: ' + event.currentTarget.error.message);
+        console.log('audioplayer:  Error: ' + audioElement.value.error.code);
+        console.log('audioplayer:  Error: ' + audioElement.value.error.message);
+        console.log('audioplayer:  Error evt: ' + event.currentTarget.error.code);
+        console.log('audioplayer:  Error evt: ' + event.currentTarget.error.message);
     };
 })
 
 // watch
-watch(playerStore, () => {
+/*watch(playerStore, () => {
     if (playerStore.hasSongs) {
         console.log("watched player", playerStore.songId)
         if (playerStore.songId !== nowPlaying.value) {
@@ -42,9 +43,23 @@ watch(playerStore, () => {
         playerStore.idle = true;
     } 
 })
+*/
+watch(songIndex, (val) => {
+    if (val !== -1) {
+        console.log("audioplayer: running!");
+        nowPlaying.value = playerStore.songId;
+    }
+    else {
+        console.log("audioplayer: stopped!")
+        audioElement.value.pause();
+        audioElement.value.currentTime = 0;
+        audioElement.value.src = "";
+        audioElement.value.removeAttribute('src');
+    }
+})
 
 watch(nowPlaying, () => {
-    console.log("trigger playyying!", nowPlaying.value)
+    console.log("audioplayer: trigger playyying!", nowPlaying.value)
     playerStore.idle = false;
     audioElement.value.src = new URL('/stream/song?id=' + nowPlaying.value, globalsStore.apiURL);
     audioElement.value.play();
