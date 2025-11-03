@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch, useTemplateRef } from 'vue'
+import { onMounted, watch, useTemplateRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import usePlayerStore from '@/stores/player'
 import useGlobalsStore from '@/stores/globals'
@@ -8,7 +8,6 @@ import useGlobalsStore from '@/stores/globals'
 const globalsStore = useGlobalsStore();
 
 //
-const nowPlaying = ref();
 const audioElement = useTemplateRef('audioElement');
 const playerStore = usePlayerStore();
 const { songIndex } = storeToRefs(playerStore)
@@ -28,26 +27,11 @@ onMounted(() => {
 })
 
 // watch
-/*watch(playerStore, () => {
-    if (playerStore.hasSongs) {
-        console.log("watched player", playerStore.songId)
-        if (playerStore.songId !== nowPlaying.value) {
-            nowPlaying.value = playerStore.songId;
-        }
-    }
-    else {
-        console.log("nope!")
-        audioElement.value.pause();
-        audioElement.value.currentTime = 0;
-        audioElement.value.src = undefined;
-        playerStore.idle = true;
-    } 
-})
-*/
 watch(songIndex, (val) => {
     if (val !== -1) {
         console.log("audioplayer: running!");
-        nowPlaying.value = playerStore.songId;
+        audioElement.value.src = new URL('/stream/song?id=' + playerStore.songId, globalsStore.apiURL);
+        audioElement.value.play();
     }
     else {
         console.log("audioplayer: stopped!")
@@ -56,13 +40,6 @@ watch(songIndex, (val) => {
         audioElement.value.src = "";
         audioElement.value.removeAttribute('src');
     }
-})
-
-watch(nowPlaying, () => {
-    console.log("audioplayer: trigger playyying!", nowPlaying.value)
-    playerStore.idle = false;
-    audioElement.value.src = new URL('/stream/song?id=' + nowPlaying.value, globalsStore.apiURL);
-    audioElement.value.play();
 })
 </script>
 
