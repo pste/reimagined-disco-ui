@@ -21,6 +21,10 @@ const usePlayerStore = defineStore('player', () => {
         }
     })
 
+    const isIdle = computed(() => {
+        return songIndex.value === -1;
+    })
+
     // inner
     function clear() {
             playList.value = [];
@@ -68,6 +72,7 @@ const usePlayerStore = defineStore('player', () => {
         // getters
         hasSongs,
         songId,
+        isIdle,
 
         // methods
         clear,
