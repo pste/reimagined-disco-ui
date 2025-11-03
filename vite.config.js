@@ -9,8 +9,10 @@ import {PrimeVueResolver} from '@primevue/auto-import-resolver';
 // https://vite.dev/config/
 export default defineConfig({
     server: {
-        host: 'localhost',
+        // host: 'localhost',
+        host: 'localhost.saba.net',
         port: 3000,
+        // allowedHosts: ['localhost.saba.net'],
     },
     plugins: [
         vue(),
