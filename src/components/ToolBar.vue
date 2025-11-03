@@ -2,34 +2,12 @@
 import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import useSessionStore from '@/stores/session'
-import usePlayerStore from '@/stores/player'
 import useCollectionStore from '@/stores/collection'
-import { useIdleObserver } from '@idle-observer/vue3'
-
-// idle timer
-const observer = useIdleObserver({
-    timeout: 60 * 1000, // secs
-    onIdle: () => {
-        if (playerStore.idle === false) {
-            observer.reset();
-        }
-        else {
-            logout();
-        }
-    },
-    onIdleWarning: () => {
-        console.log('User will be idle soon!');
-        
-    },
-    activityEvents: ['mousemove', 'keydown'],
-    idleWarningDuration: 3 * 1000, // secs
-})
 
 //
 const router = useRouter();
 const session = useSessionStore();
 const collectionStore = useCollectionStore();
-const playerStore = usePlayerStore();
 
 // data
 const menuOpen = ref();
@@ -64,8 +42,6 @@ const menuItems = ref([
 
 // methods
 function logout() {
-    observer.destroy();
-    playerStore.clear();
     session.userLogout();
     router.replace('/');
 }
