@@ -57,7 +57,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <Menubar v-if="session.loggedIn">
+    <Menubar v-if="session.loggedIn" class="w-full">
         <template #start>
             <Button 
                 icon="pi pi-bars" 
