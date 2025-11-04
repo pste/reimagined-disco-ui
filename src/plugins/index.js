@@ -4,6 +4,7 @@ import router from './router';
 import imagedata from './imagedata';
 //
 import PrimeVue from 'primevue/config';
+import 'primeflex/primeflex.css'
 import 'primeicons/primeicons.css'
 import Tooltip from 'primevue/tooltip';
 import Aura from '@primevue/themes/aura';
