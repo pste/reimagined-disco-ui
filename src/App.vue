@@ -5,6 +5,7 @@ import AudioPlayer from '@/components/AudioPlayer.vue'
 </script>
 
 <template>
+  <div class="flex flex-column align-items-center justify-content-center min-h-screen">
     <header>
         <ToolBar />
     </header>
@@ -14,6 +15,7 @@ import AudioPlayer from '@/components/AudioPlayer.vue'
     <footer>
         <AudioPlayer />
     </footer>
+  </div>
 </template>
 
 <style>

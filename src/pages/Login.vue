@@ -29,6 +29,26 @@ async function login() {
 </script>
 
 <template>
+    <div class="loginbox card p-5 shadow-2 border-round">
+        <div class="flex flex-column row-gap-2">
+            <InputGroup>
+                <InputGroupAddon>
+                    <i class="pi pi-user"></i>
+                </InputGroupAddon>
+                <InputText id="txtname" v-model="user" name="username" type="text" placeholder="Username" />
+            </InputGroup>
+
+            <InputGroup>
+                <InputGroupAddon>
+                    <i class="pi pi-lock"></i>
+                </InputGroupAddon>
+                <InputText id="txtpwd"  v-model="pwd"  name="password" type="password" />
+            </InputGroup>
+
+            <Button @click="login" type="submit">Login</Button>
+        </div>
+    </div>
+<!--
     <div class="loginpage">
         <div class="loginbox">
             <Card class="logincard">
@@ -42,9 +62,15 @@ async function login() {
             </Card>
         </div>
     </div>
+    -->
 </template>
 
 <style scoped>
+.loginbox {
+  backdrop-filter-x: blur(20px);
+  background-color: var(--p-slate-800);
+}
+/*
 .loginpage {
   display: table;
   position: absolute;
@@ -65,5 +91,5 @@ async function login() {
 .centered-content {
     margin: auto;
     text-align: center;
-}
+}*/
 </style>
