@@ -7,7 +7,7 @@ const API = inject('API');
 // pinia 
 import useSessionStore from '@/stores/session'
 import useCollectionStore from '@/stores/collection'
-const sessionStore = useSessionStore();
+const session = useSessionStore();
 const collectionStore = useCollectionStore();
 
 // data
@@ -17,19 +17,20 @@ const pwd = ref("");
 // methods 
 async function login() {
     try {
-        await sessionStore.userLogin(user.value, pwd.value);
+        await session.userLogin(user.value, pwd.value);
         await collectionStore.load();
         router.push( {name: 'collection' } );
     }
     catch (err) {
         console.error(err);
-        await sessionStore.userLogout();
+        await session.userLogout();
     }
 }
 </script>
 
 <template>
-    <div class="loginbox card p-5 shadow-2 border-round">
+    <Transition>
+    <div class="loginbox card p-5 shadow-2 border-round" v-if="session.loggedIn === false">
         <div class="flex flex-column row-gap-2">
             <InputGroup>
                 <InputGroupAddon>
@@ -48,10 +49,24 @@ async function login() {
             <Button @click="login" type="submit">Login</Button>
         </div>
     </div>
+    </Transition>
 </template>
 
 <style scoped>
 .loginbox {
+  position:absolute;
   background-color: var(--p-slate-800);
+}
+
+/**/
+.v-enter-active,
+.v-leave-active {
+  transition: all .5s ease;
+}
+
+.v-enter-from,
+.v-leave-to {
+  opacity: 0;
+  transform: translateY(100px);
 }
 </style>

@@ -10,8 +10,8 @@ const useSessionStore = defineStore('session', () => {
     const API = inject('API');
 
     // idle timer
-    let observer = buildObserver();
-    setTimeout(observer.pause, 1000); // there's a bug in the observer, I cannot pause immediatly
+    //let observer = buildObserver();
+    //setTimeout(observer.pause, 1000); // there's a bug in the observer, I cannot pause immediatly
 
     // data
     const user = ref({
@@ -43,11 +43,11 @@ const useSessionStore = defineStore('session', () => {
     async function userLogin(name, pwd) {
         const dbuser = await API.post('/login', { username: name, password: pwd });
         user.value.name = dbuser?.username || 'anonymous';
-        observer.resume();
+        //observer.resume();
     }
 
     async function userLogout() {
-        observer.pause();
+        //observer.pause();
         playerStore.clear();
 
         await API.post('/logout', { });
