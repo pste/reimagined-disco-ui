@@ -57,6 +57,7 @@ onUnmounted(() => {
 </script>
 
 <template>
+    <Transition name="toolbar">
     <Menubar v-if="session.loggedIn" class="w-full">
         <template #start>
             <Button 
@@ -85,11 +86,22 @@ onUnmounted(() => {
             </div>
         </template>
     </Menubar >
+    </Transition>
 </template>
 
 <style scoped>
 .p-menubar {
     padding: 0;
     margin-bottom: 5px;
+}
+
+.toolbar-enter-active,
+.toolbar-leave-active {
+  transition: all .5s ease-out;
+}
+
+.toolbar-enter-from,
+.toolbar-leave-to {
+  opacity: 0;
 }
 </style>
