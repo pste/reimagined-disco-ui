@@ -10,7 +10,7 @@ const globalsStore = useGlobalsStore();
 //
 const audioElement = useTemplateRef('audioElement');
 const playerStore = usePlayerStore();
-const { songIndex } = storeToRefs(playerStore)
+const { songIndex } = storeToRefs(playerStore);
 //
 onMounted(() => {
     audioElement.value.onended = (event) => { 
@@ -44,7 +44,7 @@ watch(songIndex, (val) => {
 </script>
 
 <template>
-    <audio v-show="playerStore.hasSongs" ref="audioElement" controls>
+    <audio v-show="playerStore.hasSongs" ref="audioElement" class="w-full" controls>
         Your browser does not support the audio tag.
     </audio>
 </template>
