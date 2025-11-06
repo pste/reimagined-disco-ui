@@ -26,23 +26,18 @@ const useCollectionStore = defineStore('collection', () => {
     function sortCollection() {
         const srt = session.user.preferences.sortCollectionBy;
         const dir = session.user.preferences.sortCollectionDirection;
-        const inverted = (dir === 'asc')? 1: -1;
-        if (srt === 'artist') {
+        // sort by these properties
+        if (['artist','year','added','played'].includes(srt)) {
+            const inverted = (dir === 'asc')? 1: -1;
             items.value = items.value.sort( (a,b) => {
-                if (a.name < b.name) return -1 * inverted;
-                if (a.name > b.name) return 1 * inverted;
+                if (a[srt] < b[srt]) return -1 * inverted;
+                if (a[srt] > b[srt]) return 1 * inverted;
                 return 0;
             });
         }
-        else if (srt === 'year') {
-            items.value = items.value.sort( (a,b) => {
-                if (a.year < b.year) return -1 * inverted;
-                if (a.year > b.year) return 1 * inverted;
-                return 0;
-            });
+        else {
+            console.error("collection: error sortBy", srt, dir);
         }
-        else if (srt === 'added') {}
-        else if (srt === 'played') {}
     }
     watch(sortCollectionBy, () => {
         sortCollection();
