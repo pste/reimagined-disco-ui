@@ -9,7 +9,7 @@ const router = useRouter();
 const session = useSessionStore();
 const collectionStore = useCollectionStore();
 
-// data
+// menu
 const menuOpen = ref();
 const menuItems = ref([
     {
@@ -39,16 +39,57 @@ const menuItems = ref([
         ]
     }
 ]);
+const toggleMenu = (event) => {
+    menuOpen.value.toggle(event);
+};
+
+// menu sort
+function sortHelper(sortBy) {
+    const srt = session.user.preferences.sortCollectionBy;
+    const dir = session.user.preferences.sortCollectionDirection;
+    // only change direction
+    if (srt === sortBy) {
+        if (dir === 'asc') {
+            session.user.preferences.sortCollectionDirection = 'desc';
+        }
+        else {
+            session.user.preferences.sortCollectionDirection = 'asc';
+        }
+    }
+    // change sort order / reset direction
+    else {
+        session.user.preferences.sortCollectionBy = sortBy;
+        session.user.preferences.sortCollectionDirection = 'asc'
+    }
+}
+const menuSort = ref();
+const menuItemsSort = ref([
+    { 
+        label: 'artist', 
+        command: () => sortHelper("artist")
+    },
+    { 
+        label: 'year', 
+        command: () => sortHelper("year")
+    },
+    { 
+        label: 'recently added', 
+        command: () => sortHelper("added")
+    },
+    { 
+        label: 'recently played', 
+        command: () => sortHelper("played")
+    },
+])
+const toggleMenuSort = (event) => {
+    menuSort.value.toggle(event);
+};
 
 // methods
 function logout() {
     session.userLogout();
     router.replace('/');
 }
-
-const toggleMenu = (event) => {
-    menuOpen.value.toggle(event);
-};
 
 // lifecycle
 onUnmounted(() => {
@@ -69,7 +110,17 @@ onUnmounted(() => {
                 aria-controls="overlay_menu" 
             />
             <Menu ref="menuOpen" id="overlay_menu" :model="menuItems" :popup="true" />
-            
+            <!---->
+            <Button 
+                icon="pi pi-sort" 
+                @click="toggleMenuSort" 
+                class="mr-2" 
+                text severity="secondary" 
+                aria-haspopup="true" 
+                aria-controls="overlay_menu_2" 
+            />
+            <Menu ref="menuSort" id="overlay_menu_2" :model="menuItemsSort" :popup="true" />
+            <!---->
             <InputText 
                     v-model="collectionStore.filter"
                     placeholder="Search" 

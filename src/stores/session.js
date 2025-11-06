@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { inject, computed, ref } from 'vue'
 
-import { useIdleObserver } from '@idle-observer/vue3'
+//import { useIdleObserver } from '@idle-observer/vue3'
 import usePlayerStore from '@/stores/player'
 
 //
@@ -16,6 +16,10 @@ const useSessionStore = defineStore('session', () => {
     // data
     const user = ref({
         name: "",
+        preferences: {
+            sortCollectionBy: 'artist',
+            sortCollectionDirection: 'asc',
+        },
         // token: "",
     });
 
