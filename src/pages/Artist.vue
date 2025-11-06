@@ -51,10 +51,10 @@ function gotoAlbum(disc) {
                 @click="gotoAlbum(item)"
             >
             </Disc>
-            <div class="info">
+            <!--<div class="info">
                 <span class="artist">{{ item.name }}</span>
                 <span class="title" >{{ albumTitle(item) }}</span>
-            </div>
+            </div>-->
         </div>
     </div>
 </template>
@@ -75,6 +75,7 @@ function gotoAlbum(disc) {
 .list {
     display: inline-block;
 }
+/*
 .info {
     width: 150px;
     height: 50px;
@@ -92,5 +93,5 @@ function gotoAlbum(disc) {
     text-overflow: ellipsis;
     overflow:hidden;
     white-space: nowrap;
-}
+}*/
 </style>

@@ -25,14 +25,6 @@ const album = collectionStore.getAlbum(route.params.albumid);
 const selectedSong = ref(); // id of the song selected
 const image = ref(null); // can't have async computed, so I'm using a ref
 
-// watch
-/*
-watch(selectedSong, (val) => {
-    const idx = playerStore.playList.findIndex(x => x.song_id === val);
-    // console.log("found song", idx);
-    playerStore.play(idx);
-})*/
-
 // when the player changes, we update the UI
 watch(songIndex, () => {
     console.log("album: watched playerstore.songIndex");
@@ -91,7 +83,55 @@ initcomponent();
 </script>
 
 <template>
-    <Card class="panel">
+    <div class="flex flex-col md:flex-row" v-if="false">
+        <div class="w-full md:w-5/12 flex flex-col items-centerx justify-centerx gap-3s py-5s">
+            <img style="width:100%" :src="image" />
+        <!--
+            <div class="flex flex-col gap-2">
+                <label for="username">Username</label>
+                <InputText id="username" type="text" />
+            </div>
+            <div class="flex flex-col gap-2">
+                <label for="password">Password</label>
+                <InputText id="password" type="password" />
+            </div>
+            <div class="flex">
+                <Button label="Login" icon="pi pi-user" class="w-full max-w-[17.35rem] mx-auto"></Button>
+            </div>
+        -->
+        </div>
+
+        <div class="w-full md:w-2/12">
+            <Divider layout="vertical" class="!hidden md:!flex"></Divider>
+            <Divider layout="horizontal" class="!flex md:!hidden" align="center"></Divider>
+        </div>
+
+        <div class="w-full md:w-5/12 flex items-center justify-center py-5">
+            <!--<Button label="Sign Up" icon="pi pi-user-plus" severity="success" class="w-full max-w-[17.35rem] mx-auto"></Button>-->
+            <div class="panel">
+                <h1>{{ album.title }}</h1>
+                <h2>{{ album.name }}</h2>
+                <Listbox 
+                        v-model="selectedSong" 
+                        :options="playerStore.playList"
+                        @update:model-value="updatedSelection"
+                        optionValue="song_id"
+                        optionLabel="title" 
+                        class="w-full md:w-56" 
+                >
+                        <template #option="slotProps">
+                            <div class="flex items-center">
+                                <div>{{ slotProps.option.track_nr }}. {{ slotProps.option.title }}</div>
+                            </div>
+                        </template>
+                </Listbox>
+            </div>
+        </div>
+    </div>
+
+
+
+    <Card class="panel" v-show="true">
         <template #header>
             <img style="width:100%" :src="image" />
         </template>
