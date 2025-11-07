@@ -29,9 +29,10 @@ const useCollectionStore = defineStore('collection', () => {
         // sort by these properties
         if (['artist','year','added','played'].includes(srt)) {
             const inverted = (dir === 'asc')? 1: -1;
+            const key = (srt==='artist') ? 'name' : srt; // normalize the artist with the "name" field
             items.value = items.value.sort( (a,b) => {
-                if (a[srt] < b[srt]) return -1 * inverted;
-                if (a[srt] > b[srt]) return 1 * inverted;
+                if (a[key] < b[key]) return -1 * inverted;
+                if (a[key] > b[key]) return 1 * inverted;
                 return 0;
             });
         }
