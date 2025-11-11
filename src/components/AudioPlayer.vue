@@ -1,8 +1,10 @@
 <script setup>
-import { onMounted, watch, useTemplateRef } from 'vue'
+import { onMounted, watch, useTemplateRef, inject } from 'vue'
 import { storeToRefs } from 'pinia'
 import usePlayerStore from '@/stores/player'
 import useGlobalsStore from '@/stores/globals'
+
+const API = inject('API');
 
 //
 const globalsStore = useGlobalsStore();
@@ -29,8 +31,10 @@ onMounted(() => {
 // watch
 watch(songIndex, (val) => {
     if (val !== -1) {
-        console.log("audioplayer: running!");
-        audioElement.value.src = new URL('/stream/song?id=' + playerStore.songId, globalsStore.apiURL);
+        const song_id = playerStore.songId;
+        console.log(`audioplayer: running ${song_id}!`);
+        API.post('/stream/song', { song_id });
+        audioElement.value.src = new URL(`/stream/song?id=${song_id}`, globalsStore.apiURL);
         audioElement.value.play();
     }
     else {
