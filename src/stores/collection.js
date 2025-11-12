@@ -1,4 +1,4 @@
-import { defineStore, storeToRefs } from 'pinia';
+import { defineStore } from 'pinia';
 import { inject, ref, computed, watch } from 'vue';
 
 import useSessionStore from '@/stores/session'
@@ -8,18 +8,19 @@ const useCollectionStore = defineStore('collection', () => {
     const session = useSessionStore();
     const sortCollectionBy = computed(() => session.user.preferences.sortCollectionBy);
     const sortCollectionDirection = computed(() => session.user.preferences.sortCollectionDirection);
-    /*const {
-        user: { preferences: { sortCollectionBy }},
-        user: { preferences: { sortCollectionDirection }},
-    } = storeToRefs(session); // deep destructuring sub properties (ex. user.preferences.sortCollectionBy)
-    */
     //
     const API = inject('API');
     const items = ref([]);
-    const filter = ref('');
+    const filter = ref({
+        global: '', // global search (from toolbar)
+        name: '',
+        title: ''
+    });
     const filteredData = computed(() => {
-        const flt = filter.value.toLowerCase();
-        return items.value.filter( el => el.name.toLowerCase().indexOf(flt) >= 0 );
+        const flt = filter.value.global.toLowerCase();
+        return items.value.filter( el => 
+            el.name.toLowerCase().indexOf(flt) >= 0 || 
+            el.title.toLowerCase().indexOf(flt) >= 0 );
     });
 
     // re-sort on sortBy param change
@@ -27,12 +28,11 @@ const useCollectionStore = defineStore('collection', () => {
         const srt = session.user.preferences.sortCollectionBy;
         const dir = session.user.preferences.sortCollectionDirection;
         // sort by these properties
-        if (['artist','year','added','played'].includes(srt)) {
+        if (['name','year','added','played'].includes(srt)) {
             const inverted = (dir === 'asc')? 1: -1;
-            const key = (srt==='artist') ? 'name' : srt; // normalize the artist with the "name" field
             items.value = items.value.sort( (a,b) => {
-                if (a[key] < b[key]) return -1 * inverted;
-                if (a[key] > b[key]) return 1 * inverted;
+                if (a[srt] < b[srt]) return -1 * inverted;
+                if (a[srt] > b[srt]) return 1 * inverted;
                 return 0;
             });
         }
@@ -71,6 +71,14 @@ const useCollectionStore = defineStore('collection', () => {
             }
             return Array.from(map.values())
         }),
+        //
+        resetFilter: function() {
+            filter.value = {
+                global: '',
+                name: '',
+                title: ''
+            }
+        },
         // actions: the artist discography
         getDiscography: function(artist_id) {
             return items.value.filter( el => el.artist_id == artist_id )

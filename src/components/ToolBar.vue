@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import useSessionStore from '@/stores/session'
 import useCollectionStore from '@/stores/collection'
@@ -8,6 +8,16 @@ import useCollectionStore from '@/stores/collection'
 const router = useRouter();
 const session = useSessionStore();
 const collectionStore = useCollectionStore();
+
+// computed filter
+const filter = computed({
+    get() {
+        return collectionStore.filter.global;
+    },
+    set(val) {
+        collectionStore.filter.global = val;
+    }
+})
 
 // menu
 const menuOpen = ref();
@@ -66,7 +76,7 @@ const menuSort = ref();
 const menuItemsSort = ref([
     { 
         label: 'artist', 
-        command: () => sortHelper("artist")
+        command: () => sortHelper("name") // the artist's name
     },
     { 
         label: 'year', 
@@ -122,12 +132,12 @@ onUnmounted(() => {
             <Menu ref="menuSort" id="overlay_menu_2" :model="menuItemsSort" :popup="true" />
             <!---->
             <InputText 
-                    v-model="collectionStore.filter"
+                    v-model="filter"
                     placeholder="Search" 
                     type="text" 
                     size="small"
             />
-            <Button icon="pi pi-times-circle" class="mr-2" severity="secondary" text @click="collectionStore.filter=''" />
+            <Button icon="pi pi-times-circle" class="mr-2" severity="secondary" text @click="collectionStore.resetFilter" />
         </template>
 
         <template #end>

@@ -1,5 +1,5 @@
 <script setup>
-import { inject, computed, ref, watch } from 'vue'
+import { inject, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import useCollectionStore from '@/stores/collection'
