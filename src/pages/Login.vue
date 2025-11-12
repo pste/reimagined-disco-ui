@@ -33,7 +33,7 @@ async function login() {
 </script>
 
 <template>
-    <Transition name="login">
+    <Transition name="xlogin">
     <div class="loginbox card p-5 shadow-2 border-round" v-if="session.loggedIn === false">
         <div class="flex flex-column row-gap-2">
             <InputGroup>
@@ -52,7 +52,7 @@ async function login() {
 
             <Button @click="login" type="submit">Login</Button>
 
-            <Transition name="error">
+            <Transition name="xerror">
                 <Message    severity="error" 
                             variant="outlined" 
                             size="small" 
