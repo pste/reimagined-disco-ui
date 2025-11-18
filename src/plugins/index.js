@@ -2,6 +2,7 @@ import pinia from './pinia';
 import api from './api';
 import router from './router';
 import imagedata from './imagedata';
+import idxdb from './idxdb';
 //
 import PrimeVue from 'primevue/config';
 import 'primeflex/primeflex.css'
@@ -26,4 +27,5 @@ export function registerPlugins(app) {
     app.use(router); // after pinia
     app.use(api);
     app.use(imagedata);
+    app.use(idxdb);
 }

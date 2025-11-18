@@ -80,9 +80,9 @@ const useCollectionStore = defineStore('collection', () => {
             }
         },
         // actions: the artist discography
-        getDiscography: function(artist_id) {
+        /*getDiscography: function(artist_id) {
             return items.value.filter( el => el.artist_id == artist_id )
-        },
+        },*/
         // actions: the artist discography
         getAlbum: function(album_id) {
             const found = items.value.filter( el => el.album_id == album_id );

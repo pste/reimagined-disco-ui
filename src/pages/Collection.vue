@@ -1,43 +1,49 @@
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import Disc from '@/components/Disc.vue'
 import useCollectionStore from '@/stores/collection'
+import useSessionStore from '@/stores/session'
 
 //
 const router = useRouter()
 const collectionStore = useCollectionStore();
+const session = useSessionStore();
 
 // computed
-const sortedArtists = computed(() => {
-    return collectionStore.artists.sort( (a,b) => {
-        if (a.name < b.name) return -1;
-        if (a.name > b.name) return 1;
-        return 0;
-    });
-})
+const sortCollectionBy = computed(() => session.user.preferences.sortCollectionBy);
+
+// sorting separators
+const separatorLetter = ref(['a','b','c','d','e']); // TODO
+function isFirstOfBlock(name) {
+    if (name[0] === separatorLetter.value[0]) {
+        separatorLetter.value.shift();
+        console.log('taken' + name[0])
+        return true
+    }
+    return false;
+}
 
 // methods
-function gotoArtistAlbums(artist_id) {
-    router.push({ name: 'albums', params: { artistid: artist_id }});
+function gotoArtistAlbum(album_id) {
+    router.push({ name: 'album', params: { albumid: album_id }});
 }
 </script>
 
 <template>
     <div class="collection">
-        <!--<div class="list" v-for="item in sortedArtists">-->
-        <div class="list" v-for="item in collectionStore.filteredData">
+        <div class="list" v-for="(item,idx) in collectionStore.filteredData">
+            <!-- 
+            <span v-if="isFirstOfBlock(item.name.toLowerCase())">-----</span>
+             -->
             <Disc
                 class="shadowed-off clickable"
                 :album_id="item.album_id"
                 :artist="item.name"
                 :title="item.title"
-                @click="gotoArtistAlbums(item.artist_id)"
+                @click="gotoArtistAlbum(item.album_id)"
             >
             </Disc>
-            <!--<div class="info">
-                <span class="artist">{{ item.name }}</span>
-            </div>-->
         </div>
     </div>
 </template>
@@ -48,7 +54,7 @@ function gotoArtistAlbums(artist_id) {
     height: 90vh;
     text-align: left;
 }
-.list {
+.listOFF {
     display: inline-block;
 }
 .shadowed {
