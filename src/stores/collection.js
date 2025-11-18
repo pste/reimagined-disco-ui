@@ -27,6 +27,7 @@ const useCollectionStore = defineStore('collection', () => {
     function sortCollection() {
         const srt = session.user.preferences.sortCollectionBy;
         const dir = session.user.preferences.sortCollectionDirection;
+        console.log("collection: sortBy", srt, dir);
         // sort by these properties
         if (['name','year','added','played'].includes(srt)) {
             const inverted = (dir === 'asc')? 1: -1;
@@ -97,6 +98,7 @@ const useCollectionStore = defineStore('collection', () => {
         // actions: load and caches the whole collection
         load: async function() {
             items.value = await API.get('/collection');
+            sortCollection();
         },
     }
 })
