@@ -9,7 +9,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@idle-observer/vue3": "^0.2.0",
     "@primevue/themes": "^4.2.5",
     "pinia": "^2.3.1",
     "primeflex": "^4.0.0",
