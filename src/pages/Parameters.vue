@@ -1,39 +1,49 @@
 <script setup>
-import { inject, ref } from 'vue'
+import { inject, ref, onMounted } from 'vue'
 
 const API = inject('API');
 
 // data
 const sources = ref([]);
+const aaa = ref('ciao');
 
 // methods
 async function loadSources() {
-    sources.value = await API.get('/sources');
+    sources.value = await API.get('/sources'); // { source_id, path }
 }
 
-loadSources()
+function onCellEditComplete(event) {
+    let { data, newValue, field } = event;
+    console.log(`onCellEditComplete NOOP ${field}`);
+}
+
+onMounted(async () => {
+  await loadSources();
+})
 </script>
 
 <template>
     <DataTable 
                 :value="sources" 
+                dataKey="source_id"
                 stripedRows 
                 editMode="cell" 
                 @cell-edit-complete="onCellEditComplete"
     >
+        <!-- 1st column: add/rm buttons -->
         <Column headerStyle="width: 50px">
-            <template #header="{ column }">
+            <template #header>
                 <Button icon="pi pi-plus-circle" severity="secondary" />
             </template>
-            <template #body="slotProps">
+            <template #body>
                 <Button icon="pi pi-minus-circle" severity="secondary" />
             </template>
         </Column>
-        
-        <Column field="path" header="Path" bodyClass="long-text-col" >
+        <!-- other columns (with data) -->
+        <Column header="Path" field="path" bodyClass="long-text-col" >
             <template #editor="{ data, field }">
                 <template>
-                    <InputText v-model="data[field]" autofocus fluid />
+                    <InputText v-model="aaa" autofocus fluid :placeholder="data" />
                 </template>
             </template>
         </Column>

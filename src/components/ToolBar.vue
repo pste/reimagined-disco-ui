@@ -33,10 +33,10 @@ const menuItems = ref([
                 }
             },
             {
-                label: 'Sources',
+                label: 'Parameters',
                 icon: 'pi pi-folder',
                 command: () => {
-                    router.push({ name: 'sources' });
+                    router.push({ name: 'params' });
                 }
             },
             {
@@ -98,7 +98,6 @@ const toggleMenuSort = (event) => {
 // methods
 function logout() {
     session.userLogout();
-    router.replace('/');
 }
 
 // lifecycle
