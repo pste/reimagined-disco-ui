@@ -1,11 +1,13 @@
 import { defineStore } from 'pinia';
 import { inject, computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 //import { useIdleObserver } from '@idle-observer/vue3'
 import usePlayerStore from '@/stores/player'
 
 //
 const useSessionStore = defineStore('session', () => {
+    const router = useRouter();
     const playerStore = usePlayerStore();
     const API = inject('API');
 
@@ -20,7 +22,6 @@ const useSessionStore = defineStore('session', () => {
             sortCollectionBy: 'artist',
             sortCollectionDirection: 'asc',
         },
-        // token: "",
     });
 
     // methods
@@ -53,9 +54,13 @@ const useSessionStore = defineStore('session', () => {
     async function userLogout() {
         //observer.pause();
         playerStore.clear();
+        user.value.name = ""; // to update loggedIn computed ASAP
 
         await API.post('/logout', { });
-        user.value.name = "";
+        //router.replace('/');
+        // heavy reload
+        const { protocol, host } = window.location;
+        window.location.replace(`${protocol}//${host}`);
     }
 
     // done
