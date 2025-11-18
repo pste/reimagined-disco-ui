@@ -1,34 +1,33 @@
 const dbName = 'localdisco';
-const dbVersion = 2.1;
+const dbVersion = 2.2;
 let db = null;
 
-// https://hacks.mozilla.org/2012/02/storing-images-and-files-in-indexeddb/
+// build a request to connect to the db
 var request = indexedDB.open(dbName, dbVersion);
 
 request.onsuccess = function (event) {
-    console.log("Success creating/accessing IndexedDB database");
+    console.log("idxbd succesfully initialized");
     db = request.result;
 
     db.onerror = function (event) {
-        console.log("Error creating/accessing IndexedDB database");
+        console.error("Error creating/accessing idxbd database");
     };
     
     // Interim solution for Google Chrome to create an objectStore. Will be deprecated
-    if (db.setVersion) {
+    /*if (db.setVersion) {
         if (db.version != dbVersion) {
             var setVersion = db.setVersion(dbVersion);
             setVersion.onsuccess = function () {
                 createObjectStore(db);
             };
         }
-    }
+    }*/
 }
 
-// For future use. Currently only in latest Firefox versions
 request.onupgradeneeded = function (event) {
-  const db = event.target.result;
-  createObjectStore(db);
-  
+    console.log("idxbd upgrading ...");
+    const db = event.target.result;
+    createObjectStore(db);
 };
 
 //
