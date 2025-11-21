@@ -3,9 +3,8 @@ import useSessionStore from '@/stores/session'
 
 import LoginView from '../pages/Login.vue'
 import CollectionView from '../pages/Collection.vue'
-import ArtistView from '../pages/Artist.vue'
 import AlbumView from '../pages/Album.vue'
-import SourcesView from '../pages/Sources.vue'
+import ParametersView from '../pages/Parameters.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -22,21 +21,15 @@ const router = createRouter({
         meta: { requiresAuth: true }
     },
     {
-        path: '/albums/:artistid',
-        name: 'albums',
-        component: ArtistView,
-        meta: { requiresAuth: true }
-    },
-    {
         path: '/album/:albumid',
         name: 'album',
         component: AlbumView,
         meta: { requiresAuth: true }
     },
     {
-        path: '/sources',
-        name: 'sources',
-        component: SourcesView,
+        path: '/params',
+        name: 'params',
+        component: ParametersView,
         meta: { requiresAuth: true }
     },
     

@@ -27,6 +27,7 @@ const useCollectionStore = defineStore('collection', () => {
     function sortCollection() {
         const srt = session.user.preferences.sortCollectionBy;
         const dir = session.user.preferences.sortCollectionDirection;
+        console.log("collection: sortBy", srt, dir);
         // sort by these properties
         if (['name','year','added','played'].includes(srt)) {
             const inverted = (dir === 'asc')? 1: -1;
@@ -80,9 +81,9 @@ const useCollectionStore = defineStore('collection', () => {
             }
         },
         // actions: the artist discography
-        getDiscography: function(artist_id) {
+        /*getDiscography: function(artist_id) {
             return items.value.filter( el => el.artist_id == artist_id )
-        },
+        },*/
         // actions: the artist discography
         getAlbum: function(album_id) {
             const found = items.value.filter( el => el.album_id == album_id );
@@ -97,6 +98,7 @@ const useCollectionStore = defineStore('collection', () => {
         // actions: load and caches the whole collection
         load: async function() {
             items.value = await API.get('/collection');
+            sortCollection();
         },
     }
 })

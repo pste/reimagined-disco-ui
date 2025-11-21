@@ -1,5 +1,5 @@
 <script setup>
-import { inject, ref, watch } from 'vue'
+import { inject, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import useCollectionStore from '@/stores/collection'
@@ -16,7 +16,6 @@ const {songIndex} = storeToRefs(playerStore);
 
 // 
 const API = inject('API');
-const ImageData = inject('ImageData');
 
 //
 const album = collectionStore.getAlbum(route.params.albumid);
@@ -33,11 +32,13 @@ watch(songIndex, () => {
 
 // methods 
 async function loadCover() {
-    const buffer = await coversStore.get(route.params.albumid);
+    const buffer = await coversStore.get(route.params.albumid); // buffer is a blob
     if (buffer) {
-        image.value = ImageData.toBase64(buffer);
+        //console.log("Album: loadCover", buffer);
+        image.value = URL.createObjectURL(buffer);
     }
     else {
+        console.log("Album: cover not found for", route.params.albumid);
         image.value = null;
     }
 }
@@ -75,11 +76,16 @@ function updatedSelection() {
 }
 
 // init
-async function initcomponent() {
+onMounted(async() => {
   await loadSongs();
   await loadCover();
-}
-initcomponent();
+})
+
+onUnmounted(() => {
+    if (image.value) {
+        URL.revokeObjectURL(image.value); // done with the buffer ...
+    }
+})
 </script>
 
 <template>

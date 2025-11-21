@@ -1,44 +1,59 @@
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import Disc from '@/components/Disc.vue'
 import useCollectionStore from '@/stores/collection'
+import useSessionStore from '@/stores/session'
 
 //
 const router = useRouter()
 const collectionStore = useCollectionStore();
+const session = useSessionStore();
 
 // computed
-const sortedArtists = computed(() => {
-    return collectionStore.artists.sort( (a,b) => {
-        if (a.name < b.name) return -1;
-        if (a.name > b.name) return 1;
-        return 0;
-    });
-})
+const sortCollectionBy = computed(() => session.user.preferences.sortCollectionBy);
+
+// sorting separators
+const separatorLetter = initLetters(); // must be NOT reactive (!) - starts from 'b'
+function initLetters() {
+    const res = [];
+    // 98 = 'b'; 122 = 'z'
+    for (let i=98; i<=122; i++) {
+        res.push(String.fromCharCode(i));
+    }
+    return res;
+}
+    
+function isFirstOfBlock(name) {
+    if (name[0] === separatorLetter[0]) {
+        separatorLetter.shift();
+        console.log('taken ' + name)
+        return true;
+    }
+    return false;
+}
 
 // methods
-function gotoArtistAlbums(artist_id) {
-    router.push({ name: 'albums', params: { artistid: artist_id }});
+function gotoArtistAlbum(album_id) {
+    router.push({ name: 'album', params: { albumid: album_id }});
 }
+
+//const testitems = ref(Array.from({ length: 120 }, (_, i) => i + 1));
 </script>
 
 <template>
-    <div class="collection">
-        <!--<div class="list" v-for="item in sortedArtists">-->
-        <div class="list" v-for="item in collectionStore.filteredData">
+    <div class="flex flex-wrap gap-3 p-4">
+        <template v-for="(item, index) in collectionStore.filteredData" :key="item.album_id">
             <Disc
-                class="shadowed-off clickable"
+                class="clickable"
                 :album_id="item.album_id"
                 :artist="item.name"
                 :title="item.title"
-                @click="gotoArtistAlbums(item.artist_id)"
+                @click="gotoArtistAlbum(item.album_id)"
             >
             </Disc>
-            <!--<div class="info">
-                <span class="artist">{{ item.name }}</span>
-            </div>-->
-        </div>
+            <div v-if="(index + 1) % 50 === 0" class="w-full"></div>
+        </template>
     </div>
 </template>
 
@@ -51,8 +66,37 @@ function gotoArtistAlbums(artist_id) {
 .list {
     display: inline-block;
 }
+.list.first-of-block::before {
+    content: '\A';
+    white-space: pre;
+    display: block;
+}
 .shadowed {
     border-radius: 10px;
     box-shadow: 3px 3px 1px 0px #8b8b92, 6px 6px 1px 0px #38383b, 9px 9px 1px 0px #000000;
 }
+
+/*
+
+
+
+    <div class="collectionxxx w-full flex flex-wrap gap-2 p-4 surface-groundx border-roundx">
+        <template v-for="item in collectionStore.filteredData">
+            <div class="flex align-items-center justify-content-center w-12rem h-12rem bg-primary font-bold border-round shadow-2">
+                {{item.name.toLowerCase()}}
+            </div>
+            
+            <div v-if="isFirstOfBlock(item.name.toLowerCase())" class="h-1rem w-full">CIAO!</div>
+
+            <Disc v-if="false"
+                class="shadowed-off clickable"
+                :album_id="item.album_id"
+                :artist="item.name"
+                :title="item.title"
+                @click="gotoArtistAlbum(item.album_id)"
+            >
+            </Disc>
+        </template>
+    </div>
+</template>*/
 </style>
