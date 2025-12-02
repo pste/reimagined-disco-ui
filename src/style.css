@@ -6,3 +6,6 @@ body {
 .clickable {
     cursor: pointer;
 }
+
+/* Fix for chrome: needed to avoid disappearing / moved icons */
+::before, ::after { backface-visibility: unset !important; }
