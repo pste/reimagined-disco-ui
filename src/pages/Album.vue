@@ -89,82 +89,46 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div class="flex flex-col md:flex-row" v-if="false">
-        <div class="w-full md:w-5/12 flex flex-col items-centerx justify-centerx gap-3s py-5s">
-            <img style="width:100%" :src="image" />
-        <!--
-            <div class="flex flex-col gap-2">
-                <label for="username">Username</label>
-                <InputText id="username" type="text" />
-            </div>
-            <div class="flex flex-col gap-2">
-                <label for="password">Password</label>
-                <InputText id="password" type="password" />
-            </div>
-            <div class="flex">
-                <Button label="Login" icon="pi pi-user" class="w-full max-w-[17.35rem] mx-auto"></Button>
-            </div>
-        -->
-        </div>
-
-        <div class="w-full md:w-2/12">
-            <Divider layout="vertical" class="!hidden md:!flex"></Divider>
-            <Divider layout="horizontal" class="!flex md:!hidden" align="center"></Divider>
-        </div>
-
-        <div class="w-full md:w-5/12 flex items-center justify-center py-5">
-            <!--<Button label="Sign Up" icon="pi pi-user-plus" severity="success" class="w-full max-w-[17.35rem] mx-auto"></Button>-->
-            <div class="panel">
-                <h1>{{ album.title }}</h1>
-                <h2>{{ album.name }}</h2>
-                <Listbox 
-                        v-model="selectedSong" 
-                        :options="playerStore.playList"
-                        @update:model-value="updatedSelection"
-                        optionValue="song_id"
-                        optionLabel="title" 
-                        class="w-full md:w-56" 
-                >
-                        <template #option="slotProps">
-                            <div class="flex items-center">
-                                <div>{{ slotProps.option.track_nr }}. {{ slotProps.option.title }}</div>
-                            </div>
-                        </template>
-                </Listbox>
-            </div>
-        </div>
-    </div>
-
-
-
-    <Card class="panel" v-show="true">
-        <template #header>
-            <img style="width:100%" :src="image" />
-        </template>
-        <template #title>{{ album.title }}</template>
-        <template #subtitle>{{ album.name }}</template>
-        <template #content>
-            <Listbox 
-                v-model="selectedSong" 
-                :options="playerStore.playList"
-                @update:model-value="updatedSelection"
-                optionValue="song_id"
-                optionLabel="title" 
-                class="w-full md:w-56" 
-            >
-                <template #option="slotProps">
-                    <div class="flex items-center">
-                        <div>{{ slotProps.option.track_nr }}. {{ slotProps.option.title }}</div>
+    <!-- card adattativa responsive -->
+    <div class="p-fluid">
+        <Card class="custom-card">
+            <template #content>
+                <div class="flex flex-column md:flex-row gap-4">
+                    <!-- album cover -->
+                    <div class="flex-none md:w-6 p-0 flex align-items-center justify-content-center">
+                        <img class="w-full h-auto border-round-md shadow-2" :src="image" />
                     </div>
-                </template>
-            </Listbox>
-        </template>
-        <!--<template #footer>
-            <div class="flex gap-4 mt-1">
-                <AudioPlayer />
-            </div>
-        </template>-->
-    </Card>
+                    <!-- details and songs -->
+                    <div class="flex-grow-1 p-0 flex flex-column justify-content-center">
+                        <div class="text-xl font-bold mb-2">{{ album.title }}</div>
+                        <div class="text-color-secondary mb-3">{{ album.name }}</div>
+                        <p class="m-0">
+                            <Listbox 
+                                v-model="selectedSong" 
+                                :options="playerStore.playList"
+                                @update:model-value="updatedSelection"
+                                optionValue="song_id"
+                                optionLabel="title" 
+                                class="w-full md:w-56" 
+                            >
+                                <template #option="slotProps">
+                                    <div class="flex items-center">
+                                        <div>{{ slotProps.option.track_nr }}. {{ slotProps.option.title }}</div>
+                                    </div>
+                                </template>
+                            </Listbox>
+                        </p>
+                        <!-- <Button 
+                        label="Azione" 
+                        icon="pi pi-arrow-right" 
+                        iconPos="right" 
+                        class="mt-3 w-auto md:align-self-start" 
+                        /> -->
+                    </div>
+                </div>
+            </template>
+        </Card>
+    </div>
 </template>
 
 <style scoped>
