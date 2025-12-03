@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import Disc from '@/components/Disc.vue'
+import MiniDisc from '@/components/MiniDisc.vue'
 import useCollectionStore from '@/stores/collection'
 import useSessionStore from '@/stores/session'
 
@@ -44,14 +44,14 @@ function gotoArtistAlbum(album_id) {
 <template>
     <div class="flex flex-wrap gap-3 p-4">
         <template v-for="(item, index) in collectionStore.filteredData" :key="item.album_id">
-            <Disc
+            <MiniDisc
                 class="clickable"
                 :album_id="item.album_id"
                 :artist="item.name"
                 :title="item.title"
                 @click="gotoArtistAlbum(item.album_id)"
             >
-            </Disc>
+            </MiniDisc>
             <div v-if="(index + 1) % 50 === 0" class="w-full"></div>
         </template>
     </div>
@@ -75,28 +75,4 @@ function gotoArtistAlbum(album_id) {
     border-radius: 10px;
     box-shadow: 3px 3px 1px 0px #8b8b92, 6px 6px 1px 0px #38383b, 9px 9px 1px 0px #000000;
 }
-
-/*
-
-
-
-    <div class="collectionxxx w-full flex flex-wrap gap-2 p-4 surface-groundx border-roundx">
-        <template v-for="item in collectionStore.filteredData">
-            <div class="flex align-items-center justify-content-center w-12rem h-12rem bg-primary font-bold border-round shadow-2">
-                {{item.name.toLowerCase()}}
-            </div>
-            
-            <div v-if="isFirstOfBlock(item.name.toLowerCase())" class="h-1rem w-full">CIAO!</div>
-
-            <Disc v-if="false"
-                class="shadowed-off clickable"
-                :album_id="item.album_id"
-                :artist="item.name"
-                :title="item.title"
-                @click="gotoArtistAlbum(item.album_id)"
-            >
-            </Disc>
-        </template>
-    </div>
-</template>*/
 </style>
