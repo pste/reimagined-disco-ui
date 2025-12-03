@@ -42,7 +42,7 @@ function gotoArtistAlbum(album_id) {
 </script>
 
 <template>
-    <div class="flex flex-wrap gap-3 p-4">
+    <div class="flex flex-wrap gap-3 px-4 py-6">
         <template v-for="(item, index) in collectionStore.filteredData" :key="item.album_id">
             <MiniDisc
                 class="clickable"
