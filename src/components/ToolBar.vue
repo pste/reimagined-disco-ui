@@ -23,15 +23,15 @@ const filter = computed({
 const menuOpen = ref();
 const menuItems = ref([
     {
-        label: 'Menu',
+        label: 'Options',
         items: [
-            {
+            /*{
                 label: 'Collection',
                 icon: 'pi pi-home',
                 command: () => {
                     router.push({ name: 'collection' });
                 }
-            },
+            },*/
             {
                 label: 'Parameters',
                 icon: 'pi pi-folder',
@@ -110,6 +110,7 @@ onUnmounted(() => {
     <!--<Transition name="xtoolbar">-->
     <Menubar v-if="session.loggedIn" class="w-full">
         <template #start>
+            <!-- Menu -->
             <Button 
                 icon="pi pi-bars" 
                 @click="toggleMenu" 
@@ -119,7 +120,16 @@ onUnmounted(() => {
                 aria-controls="overlay_menu" 
             />
             <Menu ref="menuOpen" id="overlay_menu" :model="menuItems" :popup="true" />
-            <!---->
+            <!-- Home -->
+             <Button 
+                icon="pi pi-home" 
+                @click="router.push({ name: 'collection' })" 
+                class="mr-2" 
+                text severity="secondary" 
+                aria-haspopup="true" 
+                aria-controls="overlay_menu_2" 
+            />
+            <!-- SortBy -->
             <Button 
                 icon="pi pi-sort" 
                 @click="toggleMenuSort" 
