@@ -40,12 +40,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div class="flex flex-column surface-card border-round shadow-2 w-12rem p-1 xxxborder-1 surface-border">
+    <div class="flex flex-column surface-card border-round shadow-2 w-12rem p-1 surface-border">
         <div 
             :style="{backgroundImage: `url('${image}')`}"
-            v-tooltip.bottom="{ value: title, disabled: (title)?false:true}"
             class="cover w-full h-12rem border-round mb-2 bg-gray-100"
-        ></div>
+        ></div><!-- v-tooltip.bottom="{ value: title, disabled: (title)?false:true}" -->
         <div class="flex flex-column">
             <span class="font-bold text-sm text-400 cover-text">
                 {{ artist }}
