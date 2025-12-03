@@ -91,7 +91,7 @@ onUnmounted(() => {
 <template>
     <!-- card adattativa responsive -->
     <div class="flex justify-content-center w-full py-6"> <!-- p-fluid w-full -->
-        <Card class="album-card w-full md:w-10 lg:w-8 xl:w-7">
+        <Card class="album-card w-full md:w-10 lg:w-8 xl:w-7 max-h-70">
             <template #content>
                 <div class="flex flex-column md:flex-row gap-4">
                     <!-- album cover -->
@@ -99,17 +99,20 @@ onUnmounted(() => {
                         <img class="w-full h-auto border-round-md shadow-2" :src="image" />
                     </div>
                     <!-- details and songs -->
-                    <div class="flex-grow-1 p-0 flex flex-column justify-content-center">
+                    <div class="flex-grow-1 p-0 flex flex-column justify-content-start">
                         <div class="text-xl font-bold mb-2">{{ album.title }}</div>
                         <div class="text-color-secondary mb-3">{{ album.name }}</div>
-                        <p class="m-0">
+                        
+                        <div class="m-0 flex-grow-1">
+                        <!--<p class="m-0 flex-grow-1">-->
                             <Listbox 
                                 v-model="selectedSong" 
                                 :options="playerStore.playList"
                                 @update:model-value="updatedSelection"
                                 optionValue="song_id"
                                 optionLabel="title" 
-                                class="w-full md:w-56" 
+                                class="w-full h-full listbox-espandibile" 
+                                :listStyle="{ maxHeight: 'unset' }"
                             >
                                 <template #option="slotProps">
                                     <div class="flex items-center">
@@ -117,7 +120,7 @@ onUnmounted(() => {
                                     </div>
                                 </template>
                             </Listbox>
-                        </p>
+                        </div>
                         <!-- <Button 
                         label="Azione" 
                         icon="pi pi-arrow-right" 
@@ -134,5 +137,12 @@ onUnmounted(() => {
 <style scoped>
 .album-card {
     max-width: 900px;
+}
+.listbox-espandibile :deep(.p-listbox-list-container) {
+    max-height: unset !important;
+    overflow-y: hidden !important;
+}
+.listbox-espandibile :deep(.p-listbox-list) {
+    height: 100%;
 }
 </style>
