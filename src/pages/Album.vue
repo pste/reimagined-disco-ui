@@ -90,8 +90,8 @@ onUnmounted(() => {
 
 <template>
     <!-- card adattativa responsive -->
-    <div class="p-fluid">
-        <Card class="custom-card">
+    <div class="flex justify-content-center w-full"> <!-- p-fluid w-full -->
+        <Card class="album-card w-full md:w-10 lg:w-8 xl:w-7">
             <template #content>
                 <div class="flex flex-column md:flex-row gap-4">
                     <!-- album cover -->
@@ -138,5 +138,8 @@ onUnmounted(() => {
   margin-top: 10px;
   margin-left: auto;
   margin-right: auto;
+}
+.album-card {
+    max-width: 900px;
 }
 </style>
