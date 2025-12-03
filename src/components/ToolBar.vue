@@ -108,7 +108,7 @@ onUnmounted(() => {
 
 <template>
     <!--<Transition name="xtoolbar">-->
-    <Menubar v-if="session.loggedIn" class="w-full">
+    <Menubar v-if="session.loggedIn" class="fixed top-0 left-0 w-full shadow-6">
         <template #start>
             <!-- Menu -->
             <Button 
