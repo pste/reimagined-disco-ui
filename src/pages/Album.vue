@@ -97,7 +97,7 @@ onUnmounted(() => {
 
                     <!-- album cover -->
                     <div class="flex flex-none p-0 align-items-center justify-content-center">
-                        <img class="w-full h-auto border-round-md shadow-2" :src="image" />
+                        <img style="max-width: 350px" class="w-full h-auto border-round-md shadow-2" :src="image" />
                     </div>
 
                     <!-- details and songs -->
