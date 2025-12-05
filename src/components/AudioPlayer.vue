@@ -13,20 +13,25 @@ const playerStore = usePlayerStore();
 // refs
 const audioElement = useTemplateRef('audioElement');
 const { songIndex } = storeToRefs(playerStore);
-
-const volumeValue = ref(100);
 const playing = ref(false);
-const muted = ref(false);
-const songCurrentTime = ref(0);
-const songDuration = ref(0);
-const changingTime = ref(false);
+const volumeValue = ref(100); // volume slider/ 
+const muted = ref(false); // mute button
+const songCurrentTime = ref(0); // song time from audioelement updates
+const songDuration = ref(0); // song duration from audioelement updates
+const sliderTime = ref(0); // time slider
+const manualSeek = ref(false); // active while manual seeking on time slider
+
+// computed 
+const songTimeText = computed(() => {
+  return `${secsToTime(songCurrentTime.value)} / ${secsToTime(songDuration.value)}`
+});
 
 // formatting utils 
 function padTime(time) {
   return (time<10) ? `0${time}`:`${time}`
 }
 function secsToTime(secs) {
-  if (!secs) return '-';
+  if (!secs) return '00:00';
   // parse hh mm ss
   const hh = Math.floor(secs/3600);
   const mmss = secs%3600;
@@ -67,28 +72,31 @@ onMounted(() => {
       console.log('audioplayer:  Error: ' + audioElement.value.error.message);
       console.log('audioplayer:  Error evt: ' + event.currentTarget.error.code);
       console.log('audioplayer:  Error evt: ' + event.currentTarget.error.message);
+      music.stop();
   };
+
+  audioElement.value.addEventListener('playing', (event) => {
+    console.log("audioElement.playing", event);
+    playing.value = true;
+  })
+
+  audioElement.value.addEventListener('pause', (event) => {
+    console.log("audioElement.pause", event);
+    playing.value = false;
+  })
 
   audioElement.value.addEventListener('loadedmetadata', function() {
     songDuration.value = audioElement.value.duration || 0;
   })
 
   audioElement.value.addEventListener('timeupdate', function() {
-    songCurrentTime.value = audioElement.value.currentTime || 0;
+    const val = audioElement.value.currentTime || 0;
+    songCurrentTime.value = val;
+    // updates the slider when not dragging
+    if (manualSeek.value === false) {
+      sliderTime.value = val;
+    }
   })
-})
-
-// computed 
-const songTime = computed(() => {
-  return `${secsToTime(songCurrentTime.value)} / ${secsToTime(songDuration.value)}`
-});
-const sliderTime = computed(() => {
-  if (changingTime.value) {
-    return sliderTime.value; // returns itself - to not update
-  }
-  else {
-    return songCurrentTime.value;
-  }
 })
 
 // watch
@@ -99,37 +107,40 @@ watch(songIndex, (val) => {
       API.post('/stream/song', { song_id });
       audioElement.value.src = new URL(`/stream/song?id=${song_id}`, globalsStore.apiURL);
       music.play();
-      playing.value = true;
     }
     else { // no more songs
       music.stop();
-      playing.value = false;
       songDuration.value = 0;
       songCurrentTime.value = 0;
     }
 })
 
-watch(playing, (val) =>{
-  if (val === true) {
-    if (playerStore.hasSongs) {
-      music.play();
-    }
-    else { // autostop if no song selected
-      playing.value = false;
-    }
-  }
-  else {
-    music.pause();
-  }
+watch(muted, (val) => {
+  audioElement.value.muted = val;
+})
+
+watch(volumeValue, (val) => {
+  audioElement.value.volume = val / 100;
 })
 
 // events
 function slideStart() {
-  changingTime.value = true;
+  manualSeek.value = true;
 }
+
 function slideEnd(evt) {
-  changingTime.value = false;
   audioElement.value.currentTime = evt.value;
+  manualSeek.value = false;
+}
+
+function btnPlayClick() {
+  if (playerStore.hasSongs) {
+      music.play();
+  }
+}
+
+function btnPauseClick() {
+  music.pause();
 }
 </script>
 
@@ -140,7 +151,7 @@ function slideEnd(evt) {
         <Button
             v-if="playing"
             icon="pi pi-pause-circle"
-            @click="playing=false"
+            @click="btnPauseClick"
             severity="primary"
             rounded
             text
@@ -150,32 +161,34 @@ function slideEnd(evt) {
             v-else
             :disabled="!playerStore.hasSongs"
             icon="pi pi-play-circle"
-            @click="playing=true"
+            @click="btnPlayClick"
             severity="secondary"
             rounded
             text
             aria-label="play"
         />
-        <Chip :label="songTime" v-if="songDuration > 0" />
+        <Chip :label="songTimeText" v-if="songDuration > 0" />
       </div>
     </template>
 
     <template class="flex-grow-1"  #center>
       <div class="flex-grow-1" >
-        <Slider :default-value="sliderTime"
-          :min="0"
-          :max="songDuration"
-          @update:modelValue="slideStart"
-          @slideend="slideEnd"
-          :show-value="false"
-          class="slider-bar" 
+        <Slider 
+            v-model="sliderTime"
+            :min="0"
+            :max="songDuration"
+            @update:modelValue="slideStart"
+            @slideend="slideEnd"
+            :show-value="false"
+            class="slider-bar" 
         />
       </div>
     </template>
 
     <template #end>
       <div class="flex align-items-center gap-2">
-        <Slider v-model="volumeValue" 
+        <Slider 
+            v-model="volumeValue" 
             :disabled="muted"
             :min="0" 
             :max="100"
