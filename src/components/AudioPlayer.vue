@@ -6,13 +6,20 @@ import useGlobalsStore from '@/stores/globals'
 
 const API = inject('API');
 
-//
+// store init
 const globalsStore = useGlobalsStore();
-
-//
-const audioElement = useTemplateRef('audioElement');
 const playerStore = usePlayerStore();
+
+// refs
+const audioElement = useTemplateRef('audioElement');
 const { songIndex } = storeToRefs(playerStore);
+
+const volumeValue = ref(100);
+const playing = ref(false);
+const muted = ref(false);
+const songCurrentTime = ref(0);
+const songDuration = ref(0);
+const changingTime = ref(false);
 
 // formatting utils 
 function padTime(time) {
@@ -71,14 +78,6 @@ onMounted(() => {
   })
 })
 
-// refs
-const volumeValue = ref(100);
-const playing = ref(false);
-const muted = ref(false);
-const songCurrentTime = ref(0);
-const songDuration = ref(0);
-const changingTime = ref(false);
-
 // computed 
 const songTime = computed(() => {
   return `${secsToTime(songCurrentTime.value)} / ${secsToTime(songDuration.value)}`
@@ -94,13 +93,12 @@ const sliderTime = computed(() => {
 
 // watch
 watch(songIndex, (val) => {
-    if (val !== -1) { // changed song index, updaet audio and play
+    if (val !== -1) { // changed song index, update audio and play
       const song_id = playerStore.songId;
       console.log(`audioplayer: running ${song_id}!`);
       API.post('/stream/song', { song_id });
       audioElement.value.src = new URL(`/stream/song?id=${song_id}`, globalsStore.apiURL);
       music.play();
-      //
       playing.value = true;
     }
     else { // no more songs
@@ -139,8 +137,25 @@ function slideEnd(evt) {
   <Toolbar v-show="playerStore.hasSongs" class="app-footer fixed bottom-0 left-0 w-full shadow-6 z-5 p-0">
     <template #start>
       <div class="flex align-items-center gap-2">
-        <Button v-if="playing" icon="pi pi-pause-circle" @click="playing=false" severity="secondary" rounded text aria-label="pause" />
-        <Button v-else         icon="pi pi-play-circle"  @click="playing=true"  severity="secondary" rounded text aria-label="play" />
+        <Button
+            v-if="playing"
+            icon="pi pi-pause-circle"
+            @click="playing=false"
+            severity="primary"
+            rounded
+            text
+            aria-label="pause"
+        />
+        <Button 
+            v-else
+            :disabled="!playerStore.hasSongs"
+            icon="pi pi-play-circle"
+            @click="playing=true"
+            severity="secondary"
+            rounded
+            text
+            aria-label="play"
+        />
         <Chip :label="songTime" v-if="songDuration > 0" />
       </div>
     </template>
@@ -161,12 +176,13 @@ function slideEnd(evt) {
     <template #end>
       <div class="flex align-items-center gap-2">
         <Slider v-model="volumeValue" 
+            :disabled="muted"
             :min="0" 
             :max="100"
             :show-value="false" 
             style="height: 6px; width: 100px" 
         />
-        <Button v-if="muted" @click="muted=false" icon="pi pi-bell"  severity="secondary" rounded text aria-label="unmute" />
+        <Button v-if="muted" @click="muted=false" icon="pi pi-bell"  severity="primary" rounded text aria-label="unmute" />
         <Button v-else       @click="muted=true"  icon="pi pi-bell-slash" severity="secondary" rounded text aria-label="mute" />
       </div>
     </template>
