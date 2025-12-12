@@ -2,6 +2,13 @@ import useSessionStore from '@/stores/session'
 import useErrorsStore from '@/stores/errors'
 import useGlobalsStore from '@/stores/globals'
 
+function buildURL(base, url) {
+    if (base.endsWith("/")) {
+        base = base.slice(0, base.length-1);
+    }
+    return `${base}${url}`;
+}
+
 async function makeRequest(method, headers, url, querystring, body) {
     // defer store usage (this handles circular reference between store => API => store)
     const errorsStore = useErrorsStore();
@@ -9,7 +16,7 @@ async function makeRequest(method, headers, url, querystring, body) {
     const globals = useGlobalsStore();
 
     // fetch
-    let address = new URL(url, globals.apiURL);
+    let address = buildURL(globals.apiURL, url);
     if (querystring) {
         address += '?' + new URLSearchParams(querystring);
     }
@@ -44,6 +51,8 @@ async function makeRequest(method, headers, url, querystring, body) {
 
 function createAPI() {
     return {
+        buildURL: buildURL,
+
         get: async (url, data) => {
             const res = await makeRequest("GET", {'Content-Type': 'application/json'}, url, data);
             const resdata = await res.json();

@@ -105,7 +105,7 @@ watch(songIndex, (val) => {
       const song_id = playerStore.songId;
       console.log(`audioplayer: running ${song_id}!`);
       API.post('/stream/song', { song_id });
-      audioElement.value.src = new URL(`/stream/song?id=${song_id}`, globalsStore.apiURL);
+      audioElement.value.src = API.buildURL(globalsStore.apiURL, `/stream/song?id=${song_id}`); // new URL(`/stream/song?id=${song_id}`, globalsStore.apiURL);
       music.play();
     }
     else { // no more songs

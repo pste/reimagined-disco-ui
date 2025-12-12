@@ -82,19 +82,6 @@ const usePlayerStore = defineStore('player', () => {
         stop,
         gotoNext,
     }
-    /* /////////////////////////////////////////
-
-    
-    actions: {
-       // stream(song_id, title, album, artist) {
-            const globalsStore = useGlobalsStore();
-            const url = new URL('/stream/song', globalsStore.apiURL);
-            this.url = url + '?id=' + song_id; // managed by watch on the player component
-            this.title = title;
-            this.album = album;
-            this.artist = artist;
-        },//
-    }*/
 })
 
 export default usePlayerStore;
