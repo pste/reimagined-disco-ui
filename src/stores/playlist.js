@@ -3,7 +3,7 @@ import { ref, computed } from 'vue';
 
 // https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API/Using_IndexedDB
 // const request = window.indexedDB.open("MyTestDatabase", 3);
-const usePlayerStore = defineStore('player', () => {
+const usePlaylistStore = defineStore('playlist', () => {
     const playList = ref([]);
     const songIndex = ref(-1); // the index into the playList
 
@@ -15,6 +15,15 @@ const usePlayerStore = defineStore('player', () => {
     const songId = computed(() => {
         if (playList.value.length > 0 && songIndex.value >= 0) {
             return playList.value[songIndex.value].song_id;
+        }
+        else {
+            return 0;
+        }
+    });
+
+    const albumId = computed(() => {
+        if (playList.value.length > 0 && songIndex.value >= 0) {
+            return playList.value[songIndex.value].album_id;
         }
         else {
             return 0;
@@ -41,7 +50,7 @@ const usePlayerStore = defineStore('player', () => {
     }
 
     function inRange(idx) {
-        return idx < playList.value.length;
+        return (idx>=0 && idx<playList.value.length);
     }
 
     function play(idx) {
@@ -64,6 +73,12 @@ const usePlayerStore = defineStore('player', () => {
         }
     }
 
+    function gotoPrev() {
+        if (inRange(songIndex.value - 1)) {
+            songIndex.value--;
+        }
+    }
+
     // done
     return {
         playList,
@@ -72,6 +87,7 @@ const usePlayerStore = defineStore('player', () => {
         // getters
         hasSongs,
         songId,
+        albumId,
         isIdle,
 
         // methods
@@ -81,7 +97,8 @@ const usePlayerStore = defineStore('player', () => {
         play,
         stop,
         gotoNext,
+        gotoPrev,
     }
 })
 
-export default usePlayerStore;
+export default usePlaylistStore;

@@ -6,7 +6,7 @@ import useCollectionStore from '@/stores/collection'
 import useSessionStore from '@/stores/session'
 
 //
-const router = useRouter()
+const router = useRouter();
 const collectionStore = useCollectionStore();
 const session = useSessionStore();
 

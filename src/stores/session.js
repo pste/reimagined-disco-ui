@@ -2,12 +2,12 @@ import { defineStore } from 'pinia';
 import { inject, computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import usePlayerStore from '@/stores/player'
+import usePlaylistStore from '@/stores/playlist'
 
 //
 const useSessionStore = defineStore('session', () => {
     const router = useRouter();
-    const playerStore = usePlayerStore();
+    const playlistStore = usePlaylistStore();
     const API = inject('API');
 
     // data
@@ -25,7 +25,7 @@ const useSessionStore = defineStore('session', () => {
     }
 
     async function userLogout() {
-        playerStore.clear();
+        playlistStore.clear();
         user.value.name = ""; // to update loggedIn computed ASAP
 
         await API.post('/logout', { });

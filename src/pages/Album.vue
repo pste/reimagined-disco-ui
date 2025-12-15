@@ -1,18 +1,17 @@
 <script setup>
 import { inject, ref, watch, onMounted, onUnmounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import useCollectionStore from '@/stores/collection'
-import usePlayerStore from '@/stores/player'
+import usePlaylistStore from '@/stores/playlist'
 import useCoversStore from '@/stores/covers'
 
 // init stuff
-const router = useRouter();
 const route = useRoute();
 const collectionStore = useCollectionStore();
 const coversStore = useCoversStore();
-const playerStore = usePlayerStore();
-const {songIndex} = storeToRefs(playerStore);
+const playlistStore = usePlaylistStore();
+const {songIndex} = storeToRefs(playlistStore);
 
 // 
 const API = inject('API');
@@ -22,12 +21,13 @@ const album = collectionStore.getAlbum(route.params.albumid);
 
 // data
 const selectedSong = ref(); // id of the song selected
+const albumSongs = ref([]); // decouple album songs from playlist songs
 const image = ref(null); // can't have async computed, so I'm using a ref
 
 // when the player changes, we update the UI
 watch(songIndex, () => {
-    console.log("album: watched playerstore.songIndex");
-    selectedSong.value = playerStore.songId;
+    console.log("album: watched playlistStore.songIndex");
+    selectedSong.value = playlistStore.songId;
 })
 
 // methods 
@@ -47,20 +47,13 @@ async function loadSongs() {
     const albumid = route.params.albumid;
     if (albumid) {
         const songs = await API.get('/search/songs', { albumid });
-        const sortedSongs = songs.sort( (a,b) => {
+        albumSongs.value = songs.sort( (a,b) => {
             if (a.disc_nr < b.disc_nr) return -1;
             if (a.disc_nr > b.disc_nr) return 1;
             if (a.track_nr < b.track_nr) return -1;
             if (a.track_nr > b.track_nr) return 1;
             return 0;
         });
-        //
-        playerStore.clear();
-        playerStore.enqueue(sortedSongs);
-        //playerStore.play();
-        /*if (sortedSongs.length > 0) {
-            selectedSong.value = sortedSongs[0].song_id; // select the 1st, starts the player
-        }*/
     }
     else {
         console.error('Bad Route: no album found');
@@ -70,15 +63,24 @@ async function loadSongs() {
 
 // respond to user input over the playlist
 function updatedSelection() {
-    const idx = playerStore.playList.findIndex(x => x.song_id === selectedSong.value);
-    console.log("album: selected idx:", idx)
-    playerStore.play(idx);
+    // (eventually) reload playlist
+    playlistStore.clear();
+    playlistStore.enqueue(albumSongs.value);
+    // find song in playlist
+    const idx = playlistStore.playList.findIndex(x => x.song_id === selectedSong.value);
+    console.log("album: selected idx:", idx);
+    // play selected song
+    playlistStore.play(idx);
 }
 
 // init
 onMounted(async() => {
   await loadSongs();
   await loadCover();
+  // update selected song for this view
+  if (playlistStore.songId) {
+    selectedSong.value = playlistStore.songId;
+  }
 })
 
 onUnmounted(() => {
@@ -108,7 +110,7 @@ onUnmounted(() => {
                         <div class="flex-grow-1 m-0" >
                             <Listbox 
                                 v-model="selectedSong" 
-                                :options="playerStore.playList"
+                                :options="albumSongs"
                                 @update:model-value="updatedSelection"
                                 optionValue="song_id"
                                 optionLabel="title" 

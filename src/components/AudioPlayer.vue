@@ -1,18 +1,20 @@
 <script setup>
 import { onMounted, watch, useTemplateRef, inject, ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
-import usePlayerStore from '@/stores/player'
+import { useRouter } from 'vue-router'
+import usePlaylistStore from '@/stores/playlist'
 import useGlobalsStore from '@/stores/globals'
 
 const API = inject('API');
+const router = useRouter();
 
 // store init
 const globalsStore = useGlobalsStore();
-const playerStore = usePlayerStore();
+const playlistStore = usePlaylistStore();
 
 // refs
 const audioElement = useTemplateRef('audioElement');
-const { songIndex } = storeToRefs(playerStore);
+const { songIndex } = storeToRefs(playlistStore);
 const playing = ref(false);
 const volumeValue = ref(100); // volume slider/ 
 const muted = ref(false); // mute button
@@ -20,11 +22,6 @@ const songCurrentTime = ref(0); // song time from audioelement updates
 const songDuration = ref(0); // song duration from audioelement updates
 const sliderTime = ref(0); // time slider
 const manualSeek = ref(false); // active while manual seeking on time slider
-
-// computed 
-const songTimeText = computed(() => {
-  return `${secsToTime(songCurrentTime.value)} / ${secsToTime(songDuration.value)}`
-});
 
 // formatting utils 
 function padTime(time) {
@@ -45,6 +42,11 @@ function secsToTime(secs) {
   }
 };
 
+// computed 
+const songTimeText = computed(() => {
+  return `${secsToTime(songCurrentTime.value)} / ${secsToTime(songDuration.value)}`
+});
+
 // audioelement player utils
 const music = {
   play: function() {
@@ -64,7 +66,7 @@ const music = {
 // init audioelement events
 onMounted(() => {
   audioElement.value.onended = (event) => {
-      playerStore.gotoNext();
+      playlistStore.gotoNext();
   }
 
   audioElement.value.onerror = (event) => {
@@ -102,7 +104,7 @@ onMounted(() => {
 // watch
 watch(songIndex, (val) => {
     if (val !== -1) { // changed song index, update audio and play
-      const song_id = playerStore.songId;
+      const song_id = playlistStore.songId;
       console.log(`audioplayer: running ${song_id}!`);
       API.post('/stream/song', { song_id });
       audioElement.value.src = API.buildURL(globalsStore.apiURL, `/stream/song?id=${song_id}`); // new URL(`/stream/song?id=${song_id}`, globalsStore.apiURL);
@@ -134,7 +136,7 @@ function slideEnd(evt) {
 }
 
 function btnPlayClick() {
-  if (playerStore.hasSongs) {
+  if (playlistStore.hasSongs) {
       music.play();
   }
 }
@@ -142,15 +144,35 @@ function btnPlayClick() {
 function btnPauseClick() {
   music.pause();
 }
+
+function gotoDisc() {
+  router.push({ name: 'album', params: { albumid: playlistStore.albumId }});
+}
+
+function gotoNext() {
+  playlistStore.gotoNext();
+}
+
+function gotoPrev() {
+  playlistStore.gotoPrev();
+}
 </script>
 
 <template>
-  <Toolbar v-show="playerStore.hasSongs" class="app-footer fixed bottom-0 left-0 w-full shadow-6 z-5 p-0">
+  <Toolbar v-show="playlistStore.hasSongs" class="app-footer fixed bottom-0 left-0 w-full shadow-6 z-5 p-0">
     <template #start>
       <div class="flex align-items-center gap-2">
         <Button
+            icon="pi pi-chevron-up"
+            @click="gotoDisc"
+            severity="secondary"
+            rounded
+            text
+            aria-label="return"
+        />
+        <Button
             v-if="playing"
-            icon="pi pi-pause-circle"
+            icon="pi pi-pause"
             @click="btnPauseClick"
             severity="primary"
             rounded
@@ -159,15 +181,24 @@ function btnPauseClick() {
         />
         <Button 
             v-else
-            :disabled="!playerStore.hasSongs"
-            icon="pi pi-play-circle"
+            :disabled="!playlistStore.hasSongs"
+            icon="pi pi-play"
             @click="btnPlayClick"
             severity="secondary"
             rounded
             text
             aria-label="play"
         />
-        <Chip :label="songTimeText" v-if="songDuration > 0" />
+        <Chip :label="songTimeText" v-if="songDuration > 0" />        
+        <Button 
+            :disabled="!playlistStore.hasSongs"
+            icon="pi pi-backward"
+            @click="gotoPrev"
+            severity="secondary"
+            rounded
+            text
+            aria-label="play"
+        />
       </div>
     </template>
 
@@ -187,6 +218,15 @@ function btnPauseClick() {
 
     <template #end>
       <div class="flex align-items-center gap-2">
+        <Button 
+            :disabled="!playlistStore.hasSongs"
+            icon="pi pi-forward"
+            @click="gotoNext"
+            severity="secondary"
+            rounded
+            text
+            aria-label="play"
+        />
         <Slider 
             v-model="volumeValue" 
             :disabled="muted"
