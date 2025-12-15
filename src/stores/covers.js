@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { inject, reactive } from 'vue';
+import { inject } from 'vue';
 
 // using a "setup store" to handle circular reference between API and store
 const useCoversStore = defineStore('covers', () => {
@@ -10,7 +10,7 @@ const useCoversStore = defineStore('covers', () => {
         // not async with intention
         get: async function(album_id) {
             const dbCover = await idxDB.get("covers", album_id);
-            //console.log("covers idxdb get:", dbCover);
+            //logger.log("covers idxdb get:", dbCover);
             // from local DB
             if (dbCover) {
                 return dbCover;
@@ -18,7 +18,7 @@ const useCoversStore = defineStore('covers', () => {
             // from APIs
             else {
                 const buffer = await API.getBlob('/search/cover', {album_id});
-                //console.log("covers API get:", buffer);
+                //logger.log("covers API get:", buffer);
                 // to local db
                 await idxDB.put("covers", album_id, buffer);
                 return buffer;

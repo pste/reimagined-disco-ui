@@ -10,7 +10,7 @@ import 'primeicons/primeicons.css'
 import Tooltip from 'primevue/tooltip';
 import Aura from '@primevue/themes/aura';
 
-export function registerPlugins(app) {    
+export function registerPlugins(app) {
     app.use(pinia);
     
     app.use(PrimeVue, {

@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import usePlaylistStore from '@/stores/playlist'
 import useGlobalsStore from '@/stores/globals'
+import logger from '@/plugins/logger'
 
 const API = inject('API');
 const router = useRouter();
@@ -70,20 +71,20 @@ onMounted(() => {
   }
 
   audioElement.value.onerror = (event) => {
-      console.log('audioplayer:  Error: ' + audioElement.value.error.code);
-      console.log('audioplayer:  Error: ' + audioElement.value.error.message);
-      console.log('audioplayer:  Error evt: ' + event.currentTarget.error.code);
-      console.log('audioplayer:  Error evt: ' + event.currentTarget.error.message);
+      logger.log('audioplayer:  Error: ' + audioElement.value.error.code);
+      logger.log('audioplayer:  Error: ' + audioElement.value.error.message);
+      logger.log('audioplayer:  Error evt: ' + event.currentTarget.error.code);
+      logger.log('audioplayer:  Error evt: ' + event.currentTarget.error.message);
       music.stop();
   };
 
   audioElement.value.addEventListener('playing', (event) => {
-    console.log("audioElement.playing", event);
+    logger.log("audioElement.playing", event);
     playing.value = true;
   })
 
   audioElement.value.addEventListener('pause', (event) => {
-    console.log("audioElement.pause", event);
+    logger.log("audioElement.pause", event);
     playing.value = false;
   })
 
@@ -105,7 +106,7 @@ onMounted(() => {
 watch(songIndex, (val) => {
     if (val !== -1) { // changed song index, update audio and play
       const song_id = playlistStore.songId;
-      console.log(`audioplayer: running ${song_id}!`);
+      logger.log(`audioplayer: running ${song_id}!`);
       API.post('/stream/song', { song_id });
       audioElement.value.src = API.buildURL(globalsStore.apiURL, `/stream/song?id=${song_id}`); // new URL(`/stream/song?id=${song_id}`, globalsStore.apiURL);
       music.play();

@@ -1,5 +1,6 @@
 <script setup>
 import { inject, ref, onMounted } from 'vue'
+import logger from '@/plugins/logger'
 
 const API = inject('API');
 
@@ -14,7 +15,7 @@ async function loadSources() {
 
 function onCellEditComplete(event) {
     let { data, newValue, field } = event;
-    console.log(`onCellEditComplete NOOP ${field}`);
+    logger.log(`onCellEditComplete NOOP ${field}`);
 }
 
 onMounted(async () => {

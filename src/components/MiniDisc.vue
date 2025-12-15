@@ -1,6 +1,7 @@
 <script setup>
-import { ref, watch, onUnmounted } from 'vue'
+import { ref, watch, onUnmounted, inject } from 'vue'
 import useCoversStore from '@/stores/covers'
+import logger from '@/plugins/logger'
 
 // 
 const coversStore = useCoversStore();
@@ -23,11 +24,11 @@ async function loadImage() {
     const id = props?.album_id;
     const buffer = await coversStore.get(id); // buffer is a blob
     if (buffer) {
-        //console.log("Disc: loadCover", buffer);
+        //logger.log("Disc: loadCover", buffer);
         image.value = URL.createObjectURL(buffer);
     }
     else {
-        console.log("Disc: cover not found for", id);
+        logger.log("Disc: cover not found for", id);
         image.value = null;
     }
 }

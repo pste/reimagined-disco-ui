@@ -1,6 +1,7 @@
 <script setup>
 import { inject, ref } from 'vue'
 import router from '../plugins/router';
+import logger from '@/plugins/logger'
 
 const API = inject('API');
 
@@ -24,7 +25,7 @@ async function login() {
         router.push( {name: 'collection' } );
     }
     catch (err) {
-        console.error(err);
+        logger.error(err);
         gotError.value = true;
         //setTimeout(() => {gotError.value = false;}, 1000);
         await session.userLogout();

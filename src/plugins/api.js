@@ -2,6 +2,8 @@ import useSessionStore from '@/stores/session'
 import useErrorsStore from '@/stores/errors'
 import useGlobalsStore from '@/stores/globals'
 
+const logger = console; // PSTE TODO REF LOGGER PLUGIN
+
 function buildURL(base, url) {
     if (base.endsWith("/")) {
         base = base.slice(0, base.length-1);
@@ -33,7 +35,7 @@ async function makeRequest(method, headers, url, querystring, body) {
             const msg = data?.error || data?.message || "Generic GET Error";
             const err = new Error(`HTTP code (${resStatus}): ${msg}`);
             if (resStatus === 401) {
-                console.error(err);
+                logger.error(err);
                 errorsStore.pushError(err);
                 sessionStore.userLogout();
             }
@@ -44,7 +46,7 @@ async function makeRequest(method, headers, url, querystring, body) {
         return res;
     }
     catch (err) {
-        console.error(`API GET ERROR: ${url}`);
+        logger.error(`API GET ERROR: ${url}`);
         errorsStore.pushError(err);
     }
 }

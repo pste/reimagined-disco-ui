@@ -1,9 +1,10 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { computed, inject } from 'vue'
 import { useRouter } from 'vue-router'
 import MiniDisc from '@/components/MiniDisc.vue'
 import useCollectionStore from '@/stores/collection'
 import useSessionStore from '@/stores/session'
+import logger from '@/plugins/logger'
 
 //
 const router = useRouter();
@@ -27,7 +28,7 @@ function initLetters() {
 function isFirstOfBlock(name) {
     if (name[0] === separatorLetter[0]) {
         separatorLetter.shift();
-        console.log('taken ' + name)
+        logger.log('taken ' + name)
         return true;
     }
     return false;

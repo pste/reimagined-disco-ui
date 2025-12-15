@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { inject, ref, computed, watch } from 'vue';
-
+import logger from '@/plugins/logger'
 import useSessionStore from '@/stores/session'
 
 // using a "setup store" to handle circular reference between API and store
@@ -27,7 +27,7 @@ const useCollectionStore = defineStore('collection', () => {
     function sortCollection() {
         const srt = session.user.preferences.sortCollectionBy;
         const dir = session.user.preferences.sortCollectionDirection;
-        console.log("collection: sortBy", srt, dir);
+        logger.log("collection: sortBy", srt, dir);
         // sort by these properties
         if (['name','year','added','played'].includes(srt)) {
             const inverted = (dir === 'asc')? 1: -1;
@@ -38,7 +38,7 @@ const useCollectionStore = defineStore('collection', () => {
             });
         }
         else {
-            console.error("collection: error sortBy", srt, dir);
+            logger.error("collection: error sortBy", srt, dir);
         }
     }
     watch(sortCollectionBy, () => {
@@ -91,7 +91,7 @@ const useCollectionStore = defineStore('collection', () => {
                 return found[0];
             }
             else {
-                console.error(`collection: album ${album_id} not found!`)
+                logger.error(`collection: album ${album_id} not found!`)
                 return null;
             }
         },

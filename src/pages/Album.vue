@@ -5,6 +5,7 @@ import { storeToRefs } from 'pinia'
 import useCollectionStore from '@/stores/collection'
 import usePlaylistStore from '@/stores/playlist'
 import useCoversStore from '@/stores/covers'
+import logger from '@/plugins/logger'
 
 // init stuff
 const route = useRoute();
@@ -26,7 +27,7 @@ const image = ref(null); // can't have async computed, so I'm using a ref
 
 // when the player changes, we update the UI
 watch(songIndex, () => {
-    console.log("album: watched playlistStore.songIndex");
+    logger.log("album: watched playlistStore.songIndex");
     selectedSong.value = playlistStore.songId;
 })
 
@@ -34,11 +35,11 @@ watch(songIndex, () => {
 async function loadCover() {
     const buffer = await coversStore.get(route.params.albumid); // buffer is a blob
     if (buffer) {
-        //console.log("Album: loadCover", buffer);
+        //logger.log("Album: loadCover", buffer);
         image.value = URL.createObjectURL(buffer);
     }
     else {
-        console.log("Album: cover not found for", route.params.albumid);
+        logger.log("Album: cover not found for", route.params.albumid);
         image.value = null;
     }
 }
@@ -56,7 +57,7 @@ async function loadSongs() {
         });
     }
     else {
-        console.error('Bad Route: no album found');
+        logger.error('Bad Route: no album found');
         //router.push({ name: 'login' });
     }
 }
@@ -68,7 +69,7 @@ function updatedSelection() {
     playlistStore.enqueue(albumSongs.value);
     // find song in playlist
     const idx = playlistStore.playList.findIndex(x => x.song_id === selectedSong.value);
-    console.log("album: selected idx:", idx);
+    logger.log("album: selected idx:", idx);
     // play selected song
     playlistStore.play(idx);
 }
