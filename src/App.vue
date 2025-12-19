@@ -11,6 +11,7 @@ import AudioPlayer from '@/components/AudioPlayer.vue'
     </header>
     <RouterView />
     <AudioPlayer />
+    <Toast />
   </div>
 </template>
 

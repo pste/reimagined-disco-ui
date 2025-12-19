@@ -3,6 +3,7 @@ import api from './api';
 import router from './router';
 import imagedata from './imagedata';
 import idxdb from './idxdb';
+import ToastService from './toast'
 //
 import PrimeVue from 'primevue/config';
 import 'primeflex/primeflex.css'
@@ -22,7 +23,7 @@ export function registerPlugins(app) {
         }
     });
     app.directive("tooltip", Tooltip);
-
+    app.use(ToastService);
 
     app.use(router); // after pinia
     app.use(api);

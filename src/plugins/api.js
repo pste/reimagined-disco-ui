@@ -31,14 +31,14 @@ async function makeRequest(method, headers, url, querystring, body) {
     });
     if (!res?.ok) {
         const resStatus = res?.status;
-        const msg = data?.error || data?.message || "Generic GET Error";
-        const err = new Error(`HTTP code (${resStatus}): ${msg}`);
-        if (resStatus === '401') {
-            logger.error(err);
-            errorsStore.pushError(err);
+        if (resStatus === 401) {
+            errorsStore.showError("401 Unauthorized");
             sessionStore.userLogout();
         }
         else {
+            const data = res.json();
+            const msg = data?.error || data?.message || "Generic Fetch Error";
+            const err = new Error(`HTTP code (${resStatus}): ${msg}`);
             throw err;
         }
     }
@@ -46,6 +46,8 @@ async function makeRequest(method, headers, url, querystring, body) {
 }
 
 function createAPI() {
+    const errorsStore = useErrorsStore();
+
     return {
         buildURL: buildURL,
 
@@ -57,7 +59,7 @@ function createAPI() {
             }
             catch (err) {
                 logger.error(`API ERROR: ${url}`);
-                errorsStore.pushError(err);
+                errorsStore.showError(err);
             }
         },
 
@@ -69,7 +71,7 @@ function createAPI() {
             }
             catch (err) {
                 logger.error(`API ERROR: ${url}`);
-                errorsStore.pushError(err);
+                errorsStore.showError(err);
             }
         },
 
@@ -81,7 +83,7 @@ function createAPI() {
             }
             catch (err) {
                 logger.error(`API ERROR: ${url}`);
-                errorsStore.pushError(err);
+                errorsStore.showError(err);
             }
         }
     }

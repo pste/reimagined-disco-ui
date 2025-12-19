@@ -25,7 +25,7 @@ function onCellEditComplete(event) {
 async function savePassword() {
     if (pwd1.value !== pwd2.value) {
         // ERROR
-        errorsStore.pushError("Password does not match!");
+        errorsStore.showError("Password does not match!");
     }
     else {
         await API.post('/user/password', { value: pwd1.value})
