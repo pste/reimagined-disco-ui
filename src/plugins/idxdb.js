@@ -1,9 +1,8 @@
+import logger from '@/plugins/logger'
+
 const dbName = 'localdisco';
 const dbVersion = 2.2;
 let db = null;
-
-//
-const logger = console; // PSTE TODO REF LOGGER PLUGIN
 
 // build a request to connect to the db
 var request = indexedDB.open(dbName, dbVersion);
