@@ -132,8 +132,16 @@ function slideStart() {
 }
 
 function slideEnd(evt) {
-  audioElement.value.currentTime = evt.value;
+  const newTime = sliderTime.value; // evt.value
+  audioElement.value.currentTime = newTime; // update needed by drag and drop
   manualSeek.value = false;
+}
+
+function slideDrag() {
+  if (manualSeek.value === false) { // ended drag, needed to update value once more
+    const newTime = sliderTime.value;
+    audioElement.value.currentTime = newTime; // update needed by single click on timebar
+  }
 }
 
 function btnPlayClick() {
@@ -209,11 +217,12 @@ function gotoPrev() {
             v-model="sliderTime"
             :min="0"
             :max="songDuration"
-            @update:modelValue="slideStart"
-            @slideend="slideEnd"
+            @mousedown="slideStart"
+            @mouseup="slideEnd"
+            @update:modelValue="slideDrag"
             :show-value="false"
             class="slider-bar" 
-        />
+        /><!-- @update:modelValue="slideStart" @slideend="slideEnd" -->
       </div>
     </template>
 
