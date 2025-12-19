@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { inject, computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+import logger from '@/plugins/logger'
 import usePlaylistStore from '@/stores/playlist'
 
 //
@@ -32,6 +33,7 @@ const useSessionStore = defineStore('session', () => {
         // heavy reload
         const { protocol, host } = window.location;
         window.location.replace(`${protocol}//${host}`);
+        logger.info("Logged out.");
     }
 
     // done

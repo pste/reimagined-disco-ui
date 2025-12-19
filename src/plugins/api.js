@@ -23,32 +23,26 @@ async function makeRequest(method, headers, url, querystring, body) {
         address += '?' + new URLSearchParams(querystring);
     }
     // api call
-    try {
-        const res = await fetch(address, {
-            method,
-            headers,
-            credentials: 'include',
-            body: JSON.stringify(body),
-        });
-        if (!res?.ok) {
-            const resStatus = res?.status;
-            const msg = data?.error || data?.message || "Generic GET Error";
-            const err = new Error(`HTTP code (${resStatus}): ${msg}`);
-            if (resStatus === 401) {
-                logger.error(err);
-                errorsStore.pushError(err);
-                sessionStore.userLogout();
-            }
-            else {
-                throw err;
-            }
+    const res = await fetch(address, {
+        method,
+        headers,
+        credentials: 'include',
+        body: JSON.stringify(body),
+    });
+    if (!res?.ok) {
+        const resStatus = res?.status;
+        const msg = data?.error || data?.message || "Generic GET Error";
+        const err = new Error(`HTTP code (${resStatus}): ${msg}`);
+        if (resStatus === '401') {
+            logger.error(err);
+            errorsStore.pushError(err);
+            sessionStore.userLogout();
         }
-        return res;
+        else {
+            throw err;
+        }
     }
-    catch (err) {
-        logger.error(`API GET ERROR: ${url}`);
-        errorsStore.pushError(err);
-    }
+    return res;
 }
 
 function createAPI() {
@@ -56,21 +50,39 @@ function createAPI() {
         buildURL: buildURL,
 
         get: async (url, data) => {
-            const res = await makeRequest("GET", {'Content-Type': 'application/json'}, url, data);
-            const resdata = await res.json();
-            return resdata;
+            try {
+                const res = await makeRequest("GET", {'Content-Type': 'application/json'}, url, data);
+                const resdata = await res.json();
+                return resdata;
+            }
+            catch (err) {
+                logger.error(`API ERROR: ${url}`);
+                errorsStore.pushError(err);
+            }
         },
 
         getBlob: async (url, data) => {
-            const res = await makeRequest("GET", {'Content-Type': 'application/octet-stream'}, url, data);
-            const resdata = await res.blob();
-            return resdata;
+            try {
+                const res = await makeRequest("GET", {'Content-Type': 'application/octet-stream'}, url, data);
+                const resdata = await res.blob();
+                return resdata;
+            }
+            catch (err) {
+                logger.error(`API ERROR: ${url}`);
+                errorsStore.pushError(err);
+            }
         },
 
         post: async (url, data) => {
-            const res = await makeRequest("POST", {'Content-Type': 'application/json'}, url, undefined, data);
-            const resdata = await res.json();
-            return resdata;
+            try {
+                const res = await makeRequest("POST", {'Content-Type': 'application/json'}, url, undefined, data);
+                const resdata = await res.json();
+                return resdata;
+            }
+            catch (err) {
+                logger.error(`API ERROR: ${url}`);
+                errorsStore.pushError(err);
+            }
         }
     }
 }
