@@ -19,7 +19,8 @@ ENV NODE_ENV=production
 RUN npm run build
 
 ## STAGE 2 ##################################
-FROM nginx:alpine
+#FROM nginx:alpine
+FROM nginxinc/nginx-unprivileged:alpine
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY .docker/nginx.conf /etc/nginx/conf.d/default.conf
 
