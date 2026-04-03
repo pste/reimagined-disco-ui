@@ -26,8 +26,9 @@ jobs:
             #    images: pirraste/reimagined-disco-ui
             - name: Build and Push
               uses: docker/build-push-action@v5
-              with: 
+              with:
                 context: .
+                file: .docker/Dockerfile
                 push: true
                 tags: |
                   pirraste/reimagined-disco-ui:${{ steps.tag.outputs.TAG }}
