@@ -10,6 +10,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vite.dev/config/
 export default defineConfig({
+    //base: "https://music.nestix.dev/", // in dev mode the origin will be stripped and becomes '/'
     server: {
         // host: 'localhost',
         host: 'localhost.saba.net',
