@@ -24,6 +24,11 @@ A modern web application for storing and streaming music. Built with Vue 3, this
 ## Getting Started
 
 ```bash
+# After cloning the repository: activate the hook(s)
+git config core.hooksPath .githooks
+```
+
+```bash
 # Install dependencies
 npm install
 
