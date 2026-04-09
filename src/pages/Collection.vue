@@ -65,6 +65,10 @@ function gotoArtistAlbum(album_id) {
     gap: 0.75rem;
 }
 
+.collection-grid > * {
+    min-width: 0;
+}
+
 @media (min-width: 768px) {
     .collection-grid {
         display: flex;

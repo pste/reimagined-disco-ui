@@ -44,7 +44,7 @@ onUnmounted(() => {
     <div class="flex flex-column surface-card border-round shadow-2 minidisc-card p-1 surface-border">
         <div 
             :style="{backgroundImage: `url('${image}')`}"
-            class="cover w-full h-12rem border-round mb-2 bg-gray-100"
+            class="cover w-full border-round mb-2 bg-gray-100"
         ></div><!-- v-tooltip.bottom="{ value: title, disabled: (title)?false:true}" -->
         <div class="flex flex-column">
             <span class="font-bold text-sm text-400 cover-text">
@@ -73,7 +73,7 @@ onUnmounted(() => {
     background-repeat: no-repeat;
     background-size: cover;
     width: 100%;
-    height: 8rem; /* Altezza fissa obbligatoria - vedi h-9rem */
+    aspect-ratio: 1 / 1;
 }
 .cover-text {
     text-overflow: ellipsis;
