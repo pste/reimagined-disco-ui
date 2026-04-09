@@ -37,6 +37,16 @@ npm run build
 npm run preview
 ```
 
+## CI/CD
+
+The GitHub Actions workflow (`.github/workflows/build.yml`) triggers on version tags (`v*`) and:
+
+1. Builds and pushes the Docker image to Docker Hub as `pirraste/reimagined-disco-ui:<tag>`
+2. **Write-back** — clones the [k8s repo](https://github.com/pste/reimagined-disco-k8s), updates the image tag in `k8s/kustomization.yaml` via `kustomize edit set image`, and pushes the change back
+
+Required secrets/vars: `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`, `K8S_REPO_TOKEN`.
+`K8S_REPO_TOKEN` is a GitHub fine-grained PAT with `Contents: Read and write` on the k8s repo, stored as a secret in the app repo. 
+
 ## Project Structure
 
 ```

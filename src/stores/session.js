@@ -11,9 +11,11 @@ const useSessionStore = defineStore('session', () => {
     const playlistStore = usePlaylistStore();
     const API = inject('API');
 
-    // data
+    const SESSION_KEY = 'session_username';
+
+    // data — username restored synchronously so the router guard sees it immediately
     const user = ref({
-        name: "",
+        name: localStorage.getItem(SESSION_KEY) || "",
         preferences: {
             sortCollectionBy: 'name',
             sortCollectionDirection: 'asc',
@@ -23,11 +25,13 @@ const useSessionStore = defineStore('session', () => {
     async function userLogin(name, pwd) {
         const dbuser = await API.post('/login', { username: name, password: pwd });
         user.value.name = dbuser?.username || 'anonymous';
+        localStorage.setItem(SESSION_KEY, user.value.name);
     }
 
     async function userLogout() {
         playlistStore.clear();
         user.value.name = ""; // to update loggedIn computed ASAP
+        localStorage.removeItem(SESSION_KEY);
 
         await API.post('/logout', { });
         // heavy reload
