@@ -36,22 +36,22 @@ async function login() {
 <template>
     <!--<Transition name="xlogin">-->
     <div class="loginbox card p-5 shadow-2 border-round" v-if="session.loggedIn === false">
-        <div class="flex flex-column row-gap-2">
+        <form class="flex flex-column row-gap-2" @submit.prevent="login">
             <InputGroup>
                 <InputGroupAddon>
                     <i class="pi pi-user"></i>
                 </InputGroupAddon>
-                <InputText id="txtname" v-model="user" name="username" type="text" placeholder="Username" />
+                <InputText id="txtname" v-model="user" name="username" type="text" placeholder="Username" autocomplete="username" />
             </InputGroup>
 
             <InputGroup>
                 <InputGroupAddon>
                     <i class="pi pi-lock"></i>
                 </InputGroupAddon>
-                <InputText id="txtpwd"  v-model="pwd"  name="password" type="password" />
+                <InputText id="txtpwd"  v-model="pwd"  name="password" type="password" autocomplete="current-password" />
             </InputGroup>
 
-            <Button @click="login" type="submit">Login</Button>
+            <Button type="submit">Login</Button>
 
             <!--<Transition name="xerror">-->
                 <Message    severity="error" 
@@ -64,7 +64,7 @@ async function login() {
                     Wrong Login
                 </Message>
             <!--</Transition>-->
-        </div>
+        </form>
     </div>
     <!--</Transition>-->
 </template>
