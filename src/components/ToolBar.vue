@@ -140,11 +140,12 @@ onUnmounted(() => {
             />
             <Menu ref="menuSort" id="overlay_menu_2" :model="menuItemsSort" :popup="true" />
             <!---->
-            <InputText 
+            <InputText
                     v-model="filter"
-                    placeholder="Search" 
-                    type="text" 
+                    placeholder="Search"
+                    type="text"
                     size="small"
+                    class="search-input"
             />
             <Button icon="pi pi-times-circle" class="mr-2" severity="secondary" text @click="collectionStore.resetFilter" />
         </template>
@@ -163,6 +164,16 @@ onUnmounted(() => {
 .p-menubar {
     padding: 0;
     margin-bottom: 5px;
+}
+
+.search-input {
+    width: 180px;
+}
+
+@media (max-width: 767px) {
+    .search-input {
+        width: 80px;
+    }
 }
 
 .toolbar-enter-active,
