@@ -100,7 +100,7 @@ onUnmounted(() => {
 
 <template>
     <!-- card adattativa responsive -->
-    <div class="flex justify-content-center py-6 md:w-10 lg:w-8 xl:w-7">
+    <div class="flex justify-content-center py-6 w-11 md:w-10 lg:w-8 xl:w-7">
         <Card class="album-card w-full">
             <template #content>
                 <div class="flex flex-column md:flex-row gap-4">
