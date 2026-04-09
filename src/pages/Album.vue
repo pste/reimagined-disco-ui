@@ -62,6 +62,13 @@ async function loadSongs() {
     }
 }
 
+function playFromStart() {
+    playlistStore.clear();
+    playlistStore.enqueue(albumSongs.value);
+    playlistStore.play(0);
+    selectedSong.value = playlistStore.songId;
+}
+
 // respond to user input over the playlist
 function updatedSelection() {
     // (eventually) reload playlist
@@ -105,7 +112,17 @@ onUnmounted(() => {
 
                     <!-- details and songs -->
                     <div class="flex flex-column flex-grow-1 p-0 justify-content-start">
-                        <div class="text-xl font-bold mb-2">{{ album.title }}</div>
+                        <div class="flex align-items-center gap-2 mb-2">
+                            <span class="text-xl font-bold">{{ album.title }}</span>
+                            <Button
+                                icon="pi pi-play"
+                                rounded
+                                text
+                                severity="secondary"
+                                :disabled="albumSongs.length === 0"
+                                @click="playFromStart"
+                            />
+                        </div>
                         <div class="text-color-secondary mb-3">{{ album.name }}</div>
                         
                         <div class="flex-grow-1 m-0" >
