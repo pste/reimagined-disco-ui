@@ -1,47 +1,74 @@
 <script setup>
-import { ref, watch, onUnmounted, inject } from 'vue'
+import { ref, watch, onMounted, onUnmounted, useTemplateRef } from 'vue'
 import useCoversStore from '@/stores/covers'
 import logger from '@/plugins/logger'
 
-// 
 const coversStore = useCoversStore();
 
-// props
 const props = defineProps({
     album_id: Number,
     artist: String,
     title: String,
 });
 
-//
 const image = ref(null);
-watch(
-    () => props.album_id, // watch on a getter from the props
-    loadImage,
-    { immediate: true },
-);
+const cardEl = useTemplateRef('card');
+let observer = null;
+let deferredTimer = null;
+
 async function loadImage() {
     const id = props?.album_id;
-    const buffer = await coversStore.get(id); // buffer is a blob
+    const buffer = await coversStore.get(id);
     if (buffer) {
-        //logger.log("Disc: loadCover", buffer);
         image.value = URL.createObjectURL(buffer);
-    }
-    else {
+    } else {
         logger.log("Disc: cover not found for", id);
         image.value = null;
     }
 }
 
+function scheduleLoad() {
+    observer = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+            teardown();
+            loadImage();
+        }
+    }, { rootMargin: '200px' }); // preload leggermente prima di entrare nel viewport
+    observer.observe(cardEl.value);
+
+    // carica il resto dopo che i visibili hanno avuto la precedenza
+    deferredTimer = setTimeout(() => {
+        teardown();
+        loadImage();
+    }, 1000);
+}
+
+function teardown() {
+    observer?.disconnect();
+    observer = null;
+    clearTimeout(deferredTimer);
+    deferredTimer = null;
+}
+
+onMounted(() => scheduleLoad());
+
+// se album_id cambia (es. resort), ricarica
+watch(() => props.album_id, () => {
+    teardown();
+    image.value = null;
+    scheduleLoad();
+});
+
 onUnmounted(() => {
+    teardown();
     if (image.value) {
-        URL.revokeObjectURL(image.value); // done with the buffer ...
+        URL.revokeObjectURL(image.value);
     }
 })
 </script>
 
 <template>
-    <div class="flex flex-column surface-card border-round shadow-2 minidisc-card p-1 surface-border">
+    <div ref="card" class="flex flex-column surface-card border-round shadow-2 minidisc-card p-1 surface-border">
         <div 
             :style="{backgroundImage: `url('${image}')`}"
             class="cover w-full border-round mb-2 bg-gray-100"

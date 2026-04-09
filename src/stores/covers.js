@@ -5,6 +5,7 @@ import { inject } from 'vue';
 const useCoversStore = defineStore('covers', () => {
     const API = inject('API');
     const idxDB = inject('idxDB');
+    const memCache = new Map(); // album_id → Blob
     const queue = [];
     let isProcessing = false;
 
@@ -45,19 +46,20 @@ const useCoversStore = defineStore('covers', () => {
 
     return {
         get: async function(album_id) {
+            // 1. in-memory cache (sync)
+            if (memCache.has(album_id)) {
+                return memCache.get(album_id);
+            }
+            // 2. IndexedDB
             const dbCover = await idxDB.get("covers", album_id);
-            //logger.log("covers idxdb get:", dbCover);
-            // from local DB
             if (dbCover) {
+                memCache.set(album_id, dbCover);
                 return dbCover;
             }
-            // from APIs
-            else {
-                // queued requests to avoid flooding
-                const buffer = await enqueue(album_id);
-                // const buffer = await getcover(album_id); // request flooding ...
-                return buffer;
-            }
+            // 3. network (queued)
+            const buffer = await enqueue(album_id);
+            memCache.set(album_id, buffer);
+            return buffer;
         }
     }
 })
