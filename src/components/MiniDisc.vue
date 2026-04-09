@@ -41,7 +41,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div class="flex flex-column surface-card border-round shadow-2 w-12rem p-1 surface-border">
+    <div class="flex flex-column surface-card border-round shadow-2 minidisc-card p-1 surface-border">
         <div 
             :style="{backgroundImage: `url('${image}')`}"
             class="cover w-full h-12rem border-round mb-2 bg-gray-100"
@@ -58,6 +58,16 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.minidisc-card {
+    width: 12rem;
+}
+
+@media (max-width: 767px) {
+    .minidisc-card {
+        width: 100%;
+    }
+}
+
 .cover {
     background-position: center;
     background-repeat: no-repeat;

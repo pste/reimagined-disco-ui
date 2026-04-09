@@ -43,7 +43,7 @@ function gotoArtistAlbum(album_id) {
 </script>
 
 <template>
-    <div class="flex flex-wrap gap-3 px-4 py-6">
+    <div class="collection-grid w-full px-4 py-6">
         <template v-for="(item, index) in collectionStore.filteredData" :key="item.album_id">
             <MiniDisc
                 class="clickable"
@@ -59,10 +59,18 @@ function gotoArtistAlbum(album_id) {
 </template>
 
 <style scoped>
-.collection {
-    width: 98vw;
-    height: 90vh;
-    text-align: left;
+.collection-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+}
+
+@media (min-width: 768px) {
+    .collection-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
 }
 .list {
     display: inline-block;
