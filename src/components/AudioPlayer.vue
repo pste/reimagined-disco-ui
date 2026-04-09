@@ -170,83 +170,39 @@ function gotoPrev() {
 <template>
   <Toolbar v-show="playlistStore.hasSongs" class="app-footer fixed bottom-0 left-0 w-full shadow-6 z-5 p-0">
     <template #start>
-      <div class="flex align-items-center gap-2">
-        <Button
-            icon="pi pi-chevron-up"
-            @click="gotoDisc"
-            severity="secondary"
-            rounded
-            text
-            aria-label="return"
-        />
-        <Button
-            v-if="playing"
-            icon="pi pi-pause"
-            @click="btnPauseClick"
-            severity="primary"
-            rounded
-            text
-            aria-label="pause"
-        />
-        <Button 
-            v-else
-            :disabled="!playlistStore.hasSongs"
-            icon="pi pi-play"
-            @click="btnPlayClick"
-            severity="secondary"
-            rounded
-            text
-            aria-label="play"
-        />
-        <Chip :label="songTimeText" v-if="songDuration > 0" />        
-        <Button 
-            :disabled="!playlistStore.hasSongs"
-            icon="pi pi-backward"
-            @click="gotoPrev"
-            severity="secondary"
-            rounded
-            text
-            aria-label="play"
-        />
-      </div>
-    </template>
-
-    <template class="flex-grow-1"  #center>
-      <div class="flex-grow-1" >
-        <Slider 
-            v-model="sliderTime"
-            :min="0"
-            :max="songDuration"
-            @mousedown="slideStart"
-            @mouseup="slideEnd"
-            @update:modelValue="slideDrag"
-            :show-value="false"
-            class="slider-bar" 
-        /><!-- @update:modelValue="slideStart" @slideend="slideEnd" -->
-      </div>
-    </template>
-
-    <template #end>
-      <div class="flex align-items-center gap-2">
-        <Button 
-            :disabled="!playlistStore.hasSongs"
-            icon="pi pi-forward"
-            @click="gotoNext"
-            severity="secondary"
-            rounded
-            text
-            aria-label="play"
-        />
-        <Slider 
-            v-model="volumeValue" 
-            :disabled="muted"
-            :min="0" 
-            :max="100"
-            :show-value="false" 
-            style="height: 6px; width: 100px" 
-        />
-        <Button v-if="muted" @click="muted=false" icon="pi pi-bell"  severity="primary" rounded text aria-label="unmute" />
-        <Button v-else       @click="muted=true"  icon="pi pi-bell-slash" severity="secondary" rounded text aria-label="mute" />
+      <div class="player-layout">
+        <!-- home -->
+        <Button class="p-item p-home" icon="pi pi-bullseye" @click="gotoDisc" severity="secondary" rounded text aria-label="return" />
+        <!-- play/pause -->
+        <Button v-if="playing" class="p-item p-play" icon="pi pi-pause" @click="btnPauseClick" severity="primary" rounded text aria-label="pause" />
+        <Button v-else class="p-item p-play" :disabled="!playlistStore.hasSongs" icon="pi pi-play" @click="btnPlayClick" severity="secondary" rounded text aria-label="play" />
+        <!-- time chip -->
+        <Chip v-if="songDuration > 0" :label="songTimeText" class="p-item p-time" />
+        <!-- prev -->
+        <Button class="p-item p-prev" :disabled="!playlistStore.hasSongs" icon="pi pi-backward" @click="gotoPrev" severity="secondary" rounded text aria-label="prev" />
+        <!-- time slider row break on mobile -->
+        <div class="p-row-break"></div>
+        <!-- time slider -->
+        <div class="p-item p-slider-time">
+          <Slider
+              v-model="sliderTime"
+              :min="0"
+              :max="songDuration"
+              @mousedown="slideStart"
+              @mouseup="slideEnd"
+              @update:modelValue="slideDrag"
+              :show-value="false"
+          />
+        </div>
+        <!-- next -->
+        <Button class="p-item p-next" :disabled="!playlistStore.hasSongs" icon="pi pi-forward" @click="gotoNext" severity="secondary" rounded text aria-label="next" />
+        <!-- volume -->
+        <div class="p-item p-vol">
+          <Slider v-model="volumeValue" :disabled="muted" :min="0" :max="100" :show-value="false" />
+        </div>
+        <!-- mute -->
+        <Button v-if="muted" class="p-item p-mute" @click="muted=false" icon="pi pi-bell" severity="primary" rounded text aria-label="unmute" />
+        <Button v-else        class="p-item p-mute" @click="muted=true"  icon="pi pi-bell-slash" severity="secondary" rounded text aria-label="mute" />
       </div>
     </template>
   </Toolbar>
@@ -255,7 +211,48 @@ function gotoPrev() {
 </template>
 
 <style scoped>
-:deep(.p-toolbar-center) {
-    flex-grow: 1 !important;
+.player-layout {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0 0.5rem;
+}
+
+.p-slider-time {
+  flex: 1;
+  min-width: 0;
+}
+
+.p-vol {
+  width: 80px;
+}
+
+.p-row-break {
+  display: none;
+}
+
+/* Mobile: two rows */
+@media (max-width: 767px) {
+  .player-layout {
+    flex-wrap: wrap;
+    padding: 0.25rem 0.5rem;
+    gap: 0.25rem;
+  }
+
+  /* Row 1 order */
+  .p-home       { order: 1; }
+  .p-play       { order: 2; }
+  .p-time       { order: 3; }
+  .p-vol        { order: 4; width: 60px; margin-left: auto; }
+  .p-mute       { order: 5; }
+
+  /* Row break */
+  .p-row-break  { order: 6; display: block; width: 100%; flex-basis: 100%; height: 0; }
+
+  /* Row 2 order */
+  .p-prev         { order: 7; }
+  .p-slider-time  { order: 8; flex: 1; }
+  .p-next         { order: 9; }
 }
 </style>
