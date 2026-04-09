@@ -31,9 +31,11 @@ const useCollectionStore = defineStore('collection', () => {
         // sort by these properties
         if (['name','year','added','played'].includes(srt)) {
             const inverted = (dir === 'asc')? 1: -1;
-            items.value = items.value.sort( (a,b) => {
-                if (a[srt] < b[srt]) return -1 * inverted;
-                if (a[srt] > b[srt]) return 1 * inverted;
+            items.value = [...items.value].sort( (a,b) => {
+                const av = a[srt] ?? '';
+                const bv = b[srt] ?? '';
+                if (av < bv) return -1 * inverted;
+                if (av > bv) return 1 * inverted;
                 return 0;
             });
         }

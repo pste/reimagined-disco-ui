@@ -1,18 +1,13 @@
 <script setup>
-import { computed, inject } from 'vue'
+import { inject } from 'vue'
 import { useRouter } from 'vue-router'
 import MiniDisc from '@/components/MiniDisc.vue'
 import useCollectionStore from '@/stores/collection'
-import useSessionStore from '@/stores/session'
 import logger from '@/plugins/logger'
 
 //
 const router = useRouter();
 const collectionStore = useCollectionStore();
-const session = useSessionStore();
-
-// computed
-const sortCollectionBy = computed(() => session.user.preferences.sortCollectionBy);
 
 // sorting separators
 const separatorLetter = initLetters(); // must be NOT reactive (!) - starts from 'b'
