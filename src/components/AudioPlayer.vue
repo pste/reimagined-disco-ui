@@ -211,6 +211,11 @@ function gotoPrev() {
 </template>
 
 <style scoped>
+:deep(.p-toolbar-start) {
+  flex: 1;
+  min-width: 0;
+}
+
 .player-layout {
   display: flex;
   align-items: center;
