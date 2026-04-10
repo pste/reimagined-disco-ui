@@ -70,6 +70,19 @@ onMounted(() => {
       playlistStore.gotoNext();
   }
 
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.setActionHandler('play',          () => music.play());
+    navigator.mediaSession.setActionHandler('pause',         () => music.pause());
+    navigator.mediaSession.setActionHandler('nexttrack',     () => playlistStore.gotoNext());
+    navigator.mediaSession.setActionHandler('previoustrack', () => playlistStore.gotoPrev());
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && !playlistStore.isIdle && audioElement.value.paused) {
+      music.play();
+    }
+  });
+
   audioElement.value.onerror = (event) => {
       logger.log('audioplayer:  Error: ' + audioElement.value.error.code);
       logger.log('audioplayer:  Error: ' + audioElement.value.error.message);
@@ -110,11 +123,22 @@ watch(songIndex, (val) => {
       API.post('/stream/song', { song_id });
       audioElement.value.src = API.buildURL(globalsStore.apiURL, `/stream/song?id=${song_id}`); // new URL(`/stream/song?id=${song_id}`, globalsStore.apiURL);
       music.play();
+      if ('mediaSession' in navigator) {
+        const song = playlistStore.playList[val];
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: song.title,
+          artist: song.artist,
+          album: song.album,
+        });
+      }
     }
     else { // no more songs
       music.stop();
       songDuration.value = 0;
       songCurrentTime.value = 0;
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = null;
+      }
     }
 })
 
