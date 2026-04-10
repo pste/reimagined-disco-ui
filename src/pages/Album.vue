@@ -1,5 +1,5 @@
 <script setup>
-import { inject, ref, watch, onMounted, onUnmounted } from 'vue'
+import { inject, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import useCollectionStore from '@/stores/collection'
@@ -70,14 +70,13 @@ function playFromStart() {
 }
 
 // respond to user input over the playlist
-function updatedSelection() {
-    // (eventually) reload playlist
+async function selectSong(song) {
+    selectedSong.value = song.song_id;
     playlistStore.clear();
+    await nextTick(); // let the watch process songIndex=-1 before setting the new index
     playlistStore.enqueue(albumSongs.value);
-    // find song in playlist
-    const idx = playlistStore.playList.findIndex(x => x.song_id === selectedSong.value);
+    const idx = playlistStore.playList.findIndex(x => x.song_id === song.song_id);
     logger.log("album: selected idx:", idx);
-    // play selected song
     playlistStore.play(idx);
 }
 
@@ -126,17 +125,16 @@ onUnmounted(() => {
                         <div class="text-color-secondary mb-3">{{ album.name }}</div>
                         
                         <div class="flex-grow-1 m-0" >
-                            <Listbox 
-                                v-model="selectedSong" 
+                            <Listbox
+                                v-model="selectedSong"
                                 :options="albumSongs"
-                                @update:model-value="updatedSelection"
                                 optionValue="song_id"
-                                optionLabel="title" 
-                                class="w-full h-full listbox-espandibile" 
+                                optionLabel="title"
+                                class="w-full h-full listbox-espandibile"
                                 :listStyle="{ maxHeight: 'unsetx' }"
                             >
                                 <template #option="slotProps">
-                                    <div class="flex items-center">
+                                    <div class="flex items-center w-full" @click="selectSong(slotProps.option)">
                                         <div>{{ slotProps.option.track_nr }}. {{ slotProps.option.title }}</div>
                                     </div>
                                 </template>
