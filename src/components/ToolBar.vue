@@ -154,7 +154,7 @@ onUnmounted(() => {
 
         <template #end>
             <div class="flex items-center gap-2">
-                <Avatar icon="pi pi-user" shape="circle" v-tooltip.bottom="`${session.username}`"/>
+                <Avatar v-if="false" icon="pi pi-user" shape="circle" v-tooltip.bottom="`${session.username}`"/>
                 <Button icon="pi pi-sign-out" class="mr-2" severity="secondary" text @click="logout" />
             </div>
         </template>
