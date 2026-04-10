@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import usePlaylistStore from '@/stores/playlist'
 import useGlobalsStore from '@/stores/globals'
+import useCoversStore from '@/stores/covers'
 import logger from '@/plugins/logger'
 
 const API = inject('API');
@@ -12,6 +13,9 @@ const router = useRouter();
 // store init
 const globalsStore = useGlobalsStore();
 const playlistStore = usePlaylistStore();
+const coversStore = useCoversStore();
+
+let coverObjectURL = null;
 
 // refs
 const audioElement = useTemplateRef('audioElement');
@@ -116,7 +120,11 @@ onMounted(() => {
 })
 
 // watch
-watch(songIndex, (val) => {
+watch(songIndex, async (val) => {
+    if (coverObjectURL) {
+      URL.revokeObjectURL(coverObjectURL);
+      coverObjectURL = null;
+    }
     if (val !== -1) { // changed song index, update audio and play
       const song_id = playlistStore.songId;
       logger.log(`audioplayer: running ${song_id}!`);
@@ -125,10 +133,17 @@ watch(songIndex, (val) => {
       music.play();
       if ('mediaSession' in navigator) {
         const song = playlistStore.playList[val];
+        const artwork = [];
+        const blob = await coversStore.get(song.album_id);
+        if (blob) {
+          coverObjectURL = URL.createObjectURL(blob);
+          artwork.push({ src: coverObjectURL, type: blob.type });
+        }
         navigator.mediaSession.metadata = new MediaMetadata({
           title: song.title,
           artist: song.artist,
           album: song.album,
+          artwork,
         });
       }
     }
