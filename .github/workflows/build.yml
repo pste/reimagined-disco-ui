@@ -35,6 +35,7 @@ jobs:
                 push: true
                 tags: |
                   pirraste/reimagined-disco-ui:${{ steps.tag.outputs.TAG }}
+                build-args: VITE_APP_VERSION=${{ steps.tag.outputs.TAG }}
                 # pirraste/reimagined-disco-ui:latest
       
             - name: Install kustomize

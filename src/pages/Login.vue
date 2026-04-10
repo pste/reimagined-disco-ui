@@ -15,6 +15,7 @@ const collectionStore = useCollectionStore();
 const user = ref("");
 const pwd = ref("");
 const gotError = ref("");
+const version = import.meta.env.VITE_APP_VERSION ?? 'dev';
 
 // methods 
 async function login() {
@@ -65,6 +66,7 @@ async function login() {
                 </Message>
             <!--</Transition>-->
         </form>
+        <small class="version-label">{{ version }}</small>
     </div>
     <!--</Transition>-->
 </template>
@@ -74,6 +76,14 @@ async function login() {
   position:absolute;
   background-color: var(--p-slate-800);
   margin-top: 50px;
+}
+
+.version-label {
+  display: block;
+  text-align: center;
+  margin-top: 0.75rem;
+  opacity: 0.4;
+  font-size: 0.75rem;
 }
 
 /**/
