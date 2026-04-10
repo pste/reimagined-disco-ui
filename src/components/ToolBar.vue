@@ -140,14 +140,16 @@ onUnmounted(() => {
             />
             <Menu ref="menuSort" id="overlay_menu_2" :model="menuItemsSort" :popup="true" />
             <!---->
-            <InputText
-                    v-model="filter"
-                    placeholder="Search"
-                    type="text"
-                    size="small"
-                    class="search-input"
-            />
-            <Button icon="pi pi-times-circle" class="mr-2" severity="secondary" text @click="collectionStore.resetFilter" />
+            <div class="search-container">
+                <InputText
+                        v-model="filter"
+                        placeholder="Search"
+                        type="text"
+                        size="small"
+                        class="search-input"
+                />
+                <Button icon="pi pi-times-circle" severity="secondary" text @click="collectionStore.resetFilter" class="search-clear" />
+            </div>
         </template>
 
         <template #end>
@@ -166,13 +168,48 @@ onUnmounted(() => {
     margin-bottom: 5px;
 }
 
+.search-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
 .search-input {
     width: 180px;
+    padding-right: 2.5rem;
+}
+
+:deep(.search-clear.p-button) {
+    position: absolute;
+    right: 0;
+    width: 2.5rem;
+    height: 2.5rem;
 }
 
 @media (max-width: 767px) {
+    .search-container {
+        flex: 1 1 100%;
+    }
     .search-input {
-        width: 80px;
+        width: 100%;
+    }
+
+    :deep(.p-button) {
+        width: 3.5rem;
+        height: 3.5rem;
+    }
+    :deep(.p-button .p-button-icon) {
+        font-size: 1.25rem;
+    }
+    :deep(.p-avatar) {
+        width: 2rem;
+        height: 2rem;
+        font-size: 1rem;
+        align-self: center;
+    }
+    :deep(.search-clear.p-button) {
+        width: 2.5rem;
+        height: 2.5rem;
     }
 }
 

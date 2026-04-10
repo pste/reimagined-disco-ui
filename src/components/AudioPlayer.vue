@@ -283,5 +283,14 @@ function gotoPrev() {
   .p-prev         { order: 7; }
   .p-slider-time  { order: 8; flex: 1; }
   .p-next         { order: 9; }
+
+  /* Larger buttons on mobile */
+  :deep(.p-button) {
+    width: 3.5rem;
+    height: 3.5rem;
+  }
+  :deep(.p-button .p-button-icon) {
+    font-size: 1.25rem;
+  }
 }
 </style>
