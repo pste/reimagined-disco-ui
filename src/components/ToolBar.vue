@@ -54,10 +54,10 @@ const toggleMenu = (event) => {
 };
 
 // menu sort
-function sortHelper(sortBy) {
+function sortHelper(sortBy, defaultDir) {
     const srt = session.user.preferences.sortCollectionBy;
     const dir = session.user.preferences.sortCollectionDirection;
-    // only change direction
+    // same sort, only change direction
     if (srt === sortBy) {
         if (dir === 'asc') {
             session.user.preferences.sortCollectionDirection = 'desc';
@@ -69,26 +69,26 @@ function sortHelper(sortBy) {
     // change sort order / reset direction
     else {
         session.user.preferences.sortCollectionBy = sortBy;
-        session.user.preferences.sortCollectionDirection = 'asc'
+        session.user.preferences.sortCollectionDirection = defaultDir;
     }
 }
 const menuSort = ref();
 const menuItemsSort = ref([
     { 
         label: 'artist', 
-        command: () => sortHelper("name") // the artist's name
+        command: () => sortHelper("name", "asc") // the artist's name
     },
     { 
         label: 'year', 
-        command: () => sortHelper("year")
+        command: () => sortHelper("year", "asc")
     },
     { 
         label: 'recently added', 
-        command: () => sortHelper("added")
+        command: () => sortHelper("added", "desc")
     },
     { 
         label: 'recently played', 
-        command: () => sortHelper("played")
+        command: () => sortHelper("played" ,"desc")
     },
 ])
 const toggleMenuSort = (event) => {
