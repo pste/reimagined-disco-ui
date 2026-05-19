@@ -6,6 +6,7 @@ import useCollectionStore from '@/stores/collection'
 import usePlaylistStore from '@/stores/playlist'
 import useCoversStore from '@/stores/covers'
 import logger from '@/plugins/logger'
+import { useCacheFeeder } from '@/composables/useCacheFeeder'
 
 // init stuff
 const route = useRoute();
@@ -44,6 +45,7 @@ async function loadCover() {
     }
 }
 
+// load and sort songs
 async function loadSongs() {
     const albumid = route.params.albumid;
     if (albumid) {
@@ -62,6 +64,7 @@ async function loadSongs() {
     }
 }
 
+// clear queue and restarts playing
 function playFromStart() {
     playlistStore.clear();
     playlistStore.enqueue(albumSongs.value);

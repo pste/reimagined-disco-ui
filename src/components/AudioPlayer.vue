@@ -3,17 +3,22 @@ import { onMounted, watch, useTemplateRef, inject, ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import usePlaylistStore from '@/stores/playlist'
-import useGlobalsStore from '@/stores/globals'
 import useCoversStore from '@/stores/covers'
+import { useStreamedAudio } from '@/composables/useStreamedAudio'
+import { useCacheFeeder } from '@/composables/useCacheFeeder'
 import logger from '@/plugins/logger'
 
 const API = inject('API');
 const router = useRouter();
 
 // store init
-const globalsStore = useGlobalsStore();
 const playlistStore = usePlaylistStore();
 const coversStore = useCoversStore();
+
+// streamed audio (MSE, chunks pulled via the cache feeder)
+const streamer = useStreamedAudio();
+// feeder: used here only to prefetch the next song in background (warm the IDB cache)
+const feeder = useCacheFeeder();
 
 let coverObjectURL = null;
 
@@ -63,6 +68,7 @@ const music = {
   stop: function() {
     audioElement.value.pause();
     audioElement.value.currentTime = 0;
+    streamer.stop();
     audioElement.value.src = "";
     audioElement.value.removeAttribute('src');
   },
@@ -70,6 +76,8 @@ const music = {
 
 // init audioelement events
 onMounted(() => {
+  streamer.sweep();
+
   audioElement.value.onended = (event) => {
       playlistStore.gotoNext();
   }
@@ -105,9 +113,14 @@ onMounted(() => {
     playing.value = false;
   })
 
-  audioElement.value.addEventListener('loadedmetadata', function() {
-    songDuration.value = audioElement.value.duration || 0;
-  })
+  // with MSE, duration is Infinity until endOfStream() finalizes it,
+  // so we also listen to durationchange and guard against non-finite values
+  function updateDuration() {
+    const d = audioElement.value.duration;
+    songDuration.value = (Number.isFinite(d) && d > 0) ? d : 0;
+  }
+  audioElement.value.addEventListener('loadedmetadata', updateDuration);
+  audioElement.value.addEventListener('durationchange', updateDuration);
 
   audioElement.value.addEventListener('timeupdate', function() {
     const val = audioElement.value.currentTime || 0;
@@ -129,8 +142,15 @@ watch(songIndex, async (val) => {
       const song_id = playlistStore.songId;
       logger.log(`audioplayer: running ${song_id}!`);
       API.post('/stream/song', { song_id });
-      audioElement.value.src = API.buildURL(globalsStore.apiURL, `/stream/song?id=${song_id}`); // new URL(`/stream/song?id=${song_id}`, globalsStore.apiURL);
+      await streamer.load(audioElement.value, song_id);
       music.play();
+      // warm the cache for the next track so the gap at track change is minimal
+      const nextSong = playlistStore.playList[val + 1];
+      if (nextSong?.song_id) {
+        feeder.prefetch(nextSong.song_id).catch((err) => {
+          logger.log('audioplayer: prefetch next failed', err);
+        });
+      }
       if ('mediaSession' in navigator) {
         const song = playlistStore.playList[val];
         const artwork = [];
@@ -204,6 +224,16 @@ function gotoNext() {
 function gotoPrev() {
   playlistStore.gotoPrev();
 }
+
+function skipBack() {
+  const newTime = sliderTime.value - 15;
+  audioElement.value.currentTime = newTime; // update needed by single click on timebar
+}
+
+function skipForward() {
+  const newTime = sliderTime.value + 15;
+  audioElement.value.currentTime = newTime; // update needed by single click on timebar
+}
 </script>
 
 <template>
@@ -218,7 +248,9 @@ function gotoPrev() {
         <!-- time chip -->
         <Chip v-if="songDuration > 0" :label="songTimeText" class="p-item p-time" />
         <!-- prev -->
-        <Button class="p-item p-prev" :disabled="!playlistStore.hasSongs" icon="pi pi-backward" @click="gotoPrev" severity="secondary" rounded text aria-label="prev" />
+        <Button class="p-item p-prev" :disabled="!playlistStore.hasSongs" icon="pi pi-fast-backward" @click="gotoPrev" severity="secondary" rounded text aria-label="prev" />
+        <!-- skip back -->
+        <Button class="p-item p-skip-back" :disabled="!playlistStore.hasSongs" icon="pi pi-backward" @click="skipBack" severity="secondary" rounded text aria-label="skip-back" />
         <!-- time slider row break on mobile -->
         <div class="p-row-break"></div>
         <!-- time slider -->
@@ -233,8 +265,10 @@ function gotoPrev() {
               :show-value="false"
           />
         </div>
+        <!-- skip forward -->
+        <Button class="p-item p-skip-fw" :disabled="!playlistStore.hasSongs" icon="pi pi-forward" @click="skipForward" severity="secondary" rounded text aria-label="next" />
         <!-- next -->
-        <Button class="p-item p-next" :disabled="!playlistStore.hasSongs" icon="pi pi-forward" @click="gotoNext" severity="secondary" rounded text aria-label="next" />
+        <Button class="p-item p-next" :disabled="!playlistStore.hasSongs" icon="pi pi-fast-forward" @click="gotoNext" severity="secondary" rounded text aria-label="next" />
         <!-- volume -->
         <div class="p-item p-vol">
           <Slider v-model="volumeValue" :disabled="muted" :min="0" :max="100" :show-value="false" />
@@ -296,8 +330,10 @@ function gotoPrev() {
 
   /* Row 2 order */
   .p-prev         { order: 7; }
-  .p-slider-time  { order: 8; flex: 1; }
-  .p-next         { order: 9; }
+  .p-skip-back    { order: 8; }
+  .p-slider-time  { order: 9; flex: 1; }
+  .p-skip-fw      { order: 10; }
+  .p-next         { order: 11; }
 
   /* Larger buttons on mobile */
   :deep(.p-button) {
