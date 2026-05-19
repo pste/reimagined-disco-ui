@@ -13,11 +13,14 @@ const router = useRouter();
 
 onMounted(async () => {
     if (session.loggedIn) {
-        await collectionStore.load();
-        // su /album o altre rotte la collection è necessaria; se mancasse, redirect a /collection
-        const route = router.currentRoute.value;
-        if (route.name === 'login') {
-            router.push({ name: 'collection' });
+        const valid = await session.verifySession();
+        if (valid) {
+            await collectionStore.load();
+            // su /album o altre rotte la collection è necessaria; se mancasse, redirect a /collection
+            const route = router.currentRoute.value;
+            if (route.name === 'login') {
+                router.push({ name: 'collection' });
+            }
         }
     }
 });
@@ -28,8 +31,10 @@ onMounted(async () => {
     <header class="flex w-full">
         <ToolBar />
     </header>
-    <RouterView />
-    <AudioPlayer />
+    <template v-if="!session.isVerifying">
+        <RouterView />
+        <AudioPlayer />
+    </template>
     <Toast />
   </div>
 </template>

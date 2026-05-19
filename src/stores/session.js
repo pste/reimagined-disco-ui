@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 
 import logger from '@/plugins/logger'
 import usePlaylistStore from '@/stores/playlist'
+import useGlobalsStore from '@/stores/globals'
 
 //
 const useSessionStore = defineStore('session', () => {
@@ -21,6 +22,43 @@ const useSessionStore = defineStore('session', () => {
             sortCollectionDirection: 'asc',
         },
     });
+    const isVerifying = ref(false);
+
+    function apiUrl(path) {
+        const globals = useGlobalsStore();
+        return globals.apiURL.replace(/\/$/, '') + path;
+    }
+
+    function clearSession() {
+        user.value.name = "";
+        localStorage.removeItem(SESSION_KEY);
+    }
+
+    // Checks the real server session. Returns true if valid, false if expired/invalid.
+    // Uses raw fetch to avoid triggering the API 401 handler (which would call userLogout recursively).
+    async function verifySession() {
+        isVerifying.value = true;
+        try {
+            const res = await fetch(apiUrl('/user/me'), { credentials: 'include' });
+            if (res.ok) {
+                const data = await res.json();
+                if (data?.username) {
+                    user.value.name = data.username;
+                    localStorage.setItem(SESSION_KEY, user.value.name);
+                }
+                return true;
+            }
+            clearSession();
+            return false;
+        }
+        catch (_) {
+            clearSession();
+            return false;
+        }
+        finally {
+            isVerifying.value = false;
+        }
+    }
 
     async function userLogin(name, pwd) {
         const dbuser = await API.post('/login', { username: name, password: pwd });
@@ -30,29 +68,31 @@ const useSessionStore = defineStore('session', () => {
 
     async function userLogout() {
         playlistStore.clear();
-        user.value.name = ""; // to update loggedIn computed ASAP
-        localStorage.removeItem(SESSION_KEY);
+        clearSession();
 
-        await API.post('/logout', { });
-        // heavy reload
-        const { protocol, host } = window.location;
-        window.location.replace(`${protocol}//${host}`);
+        // fire-and-forget: the session may already be expired on the server
+        fetch(apiUrl('/logout'), {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: '{}',
+        }).catch(() => {});
+
+        router.push('/');
         logger.info("Logged out.");
     }
 
     // done
     return {
         user,
+        isVerifying,
 
         // computed
-        username: computed(() => {
-            return user.value.name;
-        }),
-        loggedIn: computed(() => {
-            return user.value.name !== "";
-        }),
+        username: computed(() => user.value.name),
+        loggedIn: computed(() => user.value.name !== ""),
 
         // actions
+        verifySession,
         userLogin,
         userLogout,
     }

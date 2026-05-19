@@ -32,8 +32,8 @@ async function makeRequest(method, headers, url, querystring, body) {
     if (!res?.ok) {
         const resStatus = res?.status;
         if (resStatus === 401) {
-            errorsStore.showError("401 Unauthorized");
             sessionStore.userLogout();
+            throw new Error('401 Unauthorized');
         }
         else {
             const data = res.json();
