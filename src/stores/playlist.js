@@ -3,6 +3,9 @@ import { ref, computed } from 'vue';
 
 // https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API/Using_IndexedDB
 // const request = window.indexedDB.open("MyTestDatabase", 3);
+
+const LAST_PLAYED_KEY = 'lastPlayed';
+
 const usePlaylistStore = defineStore('playlist', () => {
     const playList = ref([]);
     const songIndex = ref(-1); // the index into the playList
@@ -36,8 +39,24 @@ const usePlaylistStore = defineStore('playlist', () => {
 
     // inner
     function clear() {
-            playList.value = [];
-            songIndex.value = -1;
+        playList.value = [];
+        songIndex.value = -1;
+    }
+
+    function saveLastPlayed() {
+        localStorage.setItem(LAST_PLAYED_KEY, JSON.stringify(playList.value));
+    }
+
+    function restoreLastPlayed() {
+        const raw = localStorage.getItem(LAST_PLAYED_KEY);
+        if (!raw) return;
+        try {
+            const songs = JSON.parse(raw);
+            if (!Array.isArray(songs) || songs.length === 0) return;
+            playList.value = songs;
+            songIndex.value = 0;
+        }
+        catch (_) {}
     }
 
     function enqueue( song ) { // song: {song_id, title, album, artist}
@@ -93,6 +112,8 @@ const usePlaylistStore = defineStore('playlist', () => {
         // methods
         clear,
         enqueue,
+        saveLastPlayed,
+        restoreLastPlayed,
         // player
         play,
         stop,

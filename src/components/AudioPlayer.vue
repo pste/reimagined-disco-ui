@@ -138,21 +138,31 @@ watch(songIndex, async (val) => {
       URL.revokeObjectURL(coverObjectURL);
       coverObjectURL = null;
     }
-    if (val !== -1) { // changed song index, update audio and play
+    if (val !== -1) {
+      // auto-play only if already playing: catches auto-next during playback.
+      // explicit play from button, first load, restore on login — all land here with playing=false.
+      const shouldPlay = playing.value;
+      const song = playlistStore.playList[val];
       const song_id = playlistStore.songId;
-      logger.log(`audioplayer: running ${song_id}!`);
+
+      logger.log(`audioplayer: ${shouldPlay ? 'running' : 'loading'} ${song_id}`);
+      playlistStore.saveLastPlayed();
+
       API.post('/stream/song', { song_id });
       await streamer.load(audioElement.value, song_id);
-      music.play();
-      // warm the cache for the next track so the gap at track change is minimal
-      const nextSong = playlistStore.playList[val + 1];
-      if (nextSong?.song_id) {
-        feeder.prefetch(nextSong.song_id).catch((err) => {
-          logger.log('audioplayer: prefetch next failed', err);
-        });
+
+      if (shouldPlay) {
+        music.play();
+        // warm the cache for the next track so the gap at track change is minimal
+        const nextSong = playlistStore.playList[val + 1];
+        if (nextSong?.song_id) {
+          feeder.prefetch(nextSong.song_id).catch((err) => {
+            logger.log('audioplayer: prefetch next failed', err);
+          });
+        }
       }
+
       if ('mediaSession' in navigator) {
-        const song = playlistStore.playList[val];
         const artwork = [];
         const blob = await coversStore.get(song.album_id);
         if (blob) {
