@@ -24,8 +24,7 @@ let coverObjectURL = null;
 
 // refs
 const audioElement = useTemplateRef('audioElement');
-const { songIndex } = storeToRefs(playlistStore);
-const playing = ref(false);
+const { songIndex, isPlaying } = storeToRefs(playlistStore);
 const volumeValue = ref(100); // volume slider/ 
 const muted = ref(false); // mute button
 const songCurrentTime = ref(0); // song time from audioelement updates
@@ -60,7 +59,10 @@ const songTimeText = computed(() => {
 // audioelement player utils
 const music = {
   play: function() {
-    audioElement.value.play();
+    audioElement.value.play().catch(err => {
+      logger.log('audioplayer: play() rejected', err);
+      isPlaying.value = false;
+    });
   },
   pause: function() {
     audioElement.value.pause();
@@ -83,8 +85,8 @@ onMounted(() => {
   }
 
   if ('mediaSession' in navigator) {
-    navigator.mediaSession.setActionHandler('play',          () => music.play());
-    navigator.mediaSession.setActionHandler('pause',         () => music.pause());
+    navigator.mediaSession.setActionHandler('play',          () => { isPlaying.value = true;  music.play(); });
+    navigator.mediaSession.setActionHandler('pause',         () => { isPlaying.value = false; music.pause(); });
     navigator.mediaSession.setActionHandler('nexttrack',     () => playlistStore.gotoNext());
     navigator.mediaSession.setActionHandler('previoustrack', () => playlistStore.gotoPrev());
   }
@@ -100,18 +102,9 @@ onMounted(() => {
       logger.log('audioplayer:  Error: ' + audioElement.value.error.message);
       logger.log('audioplayer:  Error evt: ' + event.currentTarget.error.code);
       logger.log('audioplayer:  Error evt: ' + event.currentTarget.error.message);
+      isPlaying.value = false;
       music.stop();
   };
-
-  audioElement.value.addEventListener('playing', (event) => {
-    logger.log("audioElement.playing", event);
-    playing.value = true;
-  })
-
-  audioElement.value.addEventListener('pause', (event) => {
-    logger.log("audioElement.pause", event);
-    playing.value = false;
-  })
 
   // with MSE, duration is Infinity until endOfStream() finalizes it,
   // so we also listen to durationchange and guard against non-finite values
@@ -139,9 +132,7 @@ watch(songIndex, async (val) => {
       coverObjectURL = null;
     }
     if (val !== -1) {
-      // auto-play only if already playing: catches auto-next during playback.
-      // explicit play from button, first load, restore on login — all land here with playing=false.
-      const shouldPlay = playing.value;
+      const shouldPlay = isPlaying.value;
       const song = playlistStore.playList[val];
       const song_id = playlistStore.songId;
 
@@ -178,6 +169,7 @@ watch(songIndex, async (val) => {
       }
     }
     else { // no more songs
+      isPlaying.value = false;
       music.stop();
       songDuration.value = 0;
       songCurrentTime.value = 0;
@@ -215,11 +207,13 @@ function slideDrag() {
 
 function btnPlayClick() {
   if (playlistStore.hasSongs) {
+      isPlaying.value = true;
       music.play();
   }
 }
 
 function btnPauseClick() {
+  isPlaying.value = false;
   music.pause();
 }
 
@@ -253,7 +247,7 @@ function skipForward() {
         <!-- home -->
         <Button class="p-item p-home" icon="pi pi-bullseye" @click="gotoDisc" severity="secondary" rounded text aria-label="return" />
         <!-- play/pause -->
-        <Button v-if="playing" class="p-item p-play" icon="pi pi-pause" @click="btnPauseClick" severity="primary" rounded text aria-label="pause" />
+        <Button v-if="isPlaying" class="p-item p-play" icon="pi pi-pause" @click="btnPauseClick" severity="primary" rounded text aria-label="pause" />
         <Button v-else class="p-item p-play" :disabled="!playlistStore.hasSongs" icon="pi pi-play" @click="btnPlayClick" severity="secondary" rounded text aria-label="play" />
         <!-- time chip -->
         <Chip v-if="songDuration > 0" :label="songTimeText" class="p-item p-time" />

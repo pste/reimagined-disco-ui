@@ -9,6 +9,7 @@ const LAST_PLAYED_KEY = 'lastPlayed';
 const usePlaylistStore = defineStore('playlist', () => {
     const playList = ref([]);
     const songIndex = ref(-1); // the index into the playList
+    const isPlaying = ref(false); // user playback intent: true = user wants music playing
 
     // computed
     const hasSongs = computed(() => {
@@ -102,6 +103,7 @@ const usePlaylistStore = defineStore('playlist', () => {
     return {
         playList,
         songIndex,
+        isPlaying,
 
         // getters
         hasSongs,
