@@ -18,8 +18,8 @@ const useSessionStore = defineStore('session', () => {
     const user = ref({
         name: localStorage.getItem(SESSION_KEY) || "",
         preferences: {
-            sortCollectionBy: 'name',
-            sortCollectionDirection: 'asc',
+            sortCollectionBy: 'played',
+            sortCollectionDirection: 'desc',
         },
     });
     const isVerifying = ref(false);
