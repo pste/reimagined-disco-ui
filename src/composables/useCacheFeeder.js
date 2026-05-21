@@ -3,7 +3,7 @@ import logger from '@/plugins/logger'
 
 const CACHE_TABLE = 'chunks';
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 gg
-const MAX_CHUNKS_GUARD = 100;
+const MAX_CHUNKS_GUARD = 500;
 
 // module-level: dedup concurrent fetches across feeder instances
 // key = songId*100 + chunkId → Promise<Blob>
@@ -15,7 +15,7 @@ export function useCacheFeeder() {
 
     // build the key for a song's chunk
     function cacheKey(songId, chunkId) {
-        return songId * 100 + chunkId;
+        return `${songId}_${chunkId}`;
     }
 
     // single entry point for chunk retrieval: cache → in-flight dedup → network

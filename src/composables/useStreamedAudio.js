@@ -4,7 +4,7 @@ import { useCacheFeeder } from '@/composables/useCacheFeeder'
 
 const MIME_TYPE = 'audio/mpeg';
 const CACHE_TABLE = 'chunks';
-const MAX_CHUNKS_GUARD = 100;
+const MAX_CHUNKS_GUARD = 500;
 
 // feeder.prefetch(nextSongId) fire-and-forget dopo streamer.load.
 
