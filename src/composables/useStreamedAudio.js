@@ -134,9 +134,33 @@ export function useStreamedAudio() {
         });
       }
 
+      // remove already-played data from SourceBuffer to avoid QuotaExceededError.
+      // keeps 10s behind playhead so short seeks still work.
+      async function trimBuffer() {
+        if (!sourceBuffer || sourceBuffer.updating || sourceBuffer.buffered.length === 0) {
+          return;
+        }
+        const start = sourceBuffer.buffered.start(0);
+        const safeEnd = audioEl.currentTime - 10;
+        if (safeEnd <= start + 1) {
+          return;
+        }
+        await new Promise((resolve) => {
+          const onEnd = () => { sourceBuffer.removeEventListener('updateend', onEnd); resolve(); };
+          sourceBuffer.addEventListener('updateend', onEnd);
+          try {
+            sourceBuffer.remove(start, safeEnd);
+          }
+          catch (_) {
+            sourceBuffer.removeEventListener('updateend', onEnd);
+            resolve();
+          }
+        });
+      }
+
       // pull chunks from the feeder in order and append to MSE.
       // the streamer never touches the network: the feeder does.
-      // drain after each chunk to keep the MSE SourceBuffer under its quota (~10-12MB).
+      // drain after each chunk and trim played data to stay under the MSE quota (~10-12MB).
       let appended = 0;
       let totalBytes = 0;
       for (let chunkId = 1; chunkId <= MAX_CHUNKS_GUARD; chunkId++) {
@@ -150,6 +174,8 @@ export function useStreamedAudio() {
         signal.throwIfAborted();
         enqueueChunk(buf);
         await waitForDrain();
+        signal.throwIfAborted();
+        await trimBuffer();
         signal.throwIfAborted();
         appended += 1;
         totalBytes += buf.byteLength;
