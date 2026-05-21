@@ -136,6 +136,7 @@ export function useStreamedAudio() {
 
       // pull chunks from the feeder in order and append to MSE.
       // the streamer never touches the network: the feeder does.
+      // drain after each chunk to keep the MSE SourceBuffer under its quota (~10-12MB).
       let appended = 0;
       let totalBytes = 0;
       for (let chunkId = 1; chunkId <= MAX_CHUNKS_GUARD; chunkId++) {
@@ -148,6 +149,8 @@ export function useStreamedAudio() {
         const buf = await blob.arrayBuffer();
         signal.throwIfAborted();
         enqueueChunk(buf);
+        await waitForDrain();
+        signal.throwIfAborted();
         appended += 1;
         totalBytes += buf.byteLength;
       }
