@@ -31,6 +31,7 @@ const songCurrentTime = ref(0); // song time from audioelement updates
 const songDuration = ref(0); // song duration from audioelement updates
 const sliderTime = ref(0); // time slider
 const manualSeek = ref(false); // active while manual seeking on time slider
+const showRemaining = ref(false); // toggle elapsed ↔ remaining
 
 // formatting utils 
 function padTime(time) {
@@ -53,7 +54,11 @@ function secsToTime(secs) {
 
 // computed
 const songTimeText = computed(() => {
-  return `${secsToTime(songCurrentTime.value)} / ${secsToTime(songDuration.value)}`
+  if (showRemaining.value && songDuration.value > 0) {
+    const remaining = songDuration.value - songCurrentTime.value;
+    return `-${secsToTime(remaining)} / ${secsToTime(songDuration.value)}`;
+  }
+  return `${secsToTime(songCurrentTime.value)} / ${secsToTime(songDuration.value)}`;
 });
 
 const currentSong = computed(() => {
@@ -267,7 +272,7 @@ function skipForward() {
         <Button v-if="isPlaying" class="p-item p-play" icon="pi pi-pause" @click="btnPauseClick" severity="primary" rounded text aria-label="pause" />
         <Button v-else class="p-item p-play" :disabled="!playlistStore.hasSongs" icon="pi pi-play" @click="btnPlayClick" severity="secondary" rounded text aria-label="play" />
         <!-- time chip -->
-        <Chip v-if="songDuration > 0" :label="songTimeText" class="p-item p-time" />
+        <Chip v-if="songDuration > 0" :label="songTimeText" class="p-item p-time" style="cursor:pointer" @click="showRemaining = !showRemaining" />
         <!-- prev -->
         <Button class="p-item p-prev" :disabled="!playlistStore.hasSongs" icon="pi pi-fast-backward" @click="gotoPrev" severity="secondary" rounded text aria-label="prev" />
         <!-- skip back -->
