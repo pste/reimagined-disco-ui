@@ -75,20 +75,24 @@ function sortHelper(sortBy, defaultDir) {
 }
 const menuSort = ref();
 const menuItemsSort = ref([
-    { 
-        label: 'artist', 
+    {
+        label: 'artist',
+        key: 'name',
         command: () => sortHelper("name", "asc") // the artist's name
     },
-    { 
-        label: 'year', 
+    {
+        label: 'year',
+        key: 'year',
         command: () => sortHelper("year", "asc")
     },
-    { 
-        label: 'recently added', 
+    {
+        label: 'recently added',
+        key: 'added',
         command: () => sortHelper("added", "desc")
     },
-    { 
-        label: 'recently played', 
+    {
+        label: 'recently played',
+        key: 'played',
         command: () => sortHelper("played" ,"desc")
     },
 ])
@@ -140,7 +144,17 @@ onUnmounted(() => {
                 aria-haspopup="true" 
                 aria-controls="overlay_menu_2" 
             />
-            <Menu ref="menuSort" id="overlay_menu_2" :model="menuItemsSort" :popup="true" />
+            <Menu ref="menuSort" id="overlay_menu_2" :model="menuItemsSort" :popup="true">
+                <template #item="{ item, props }">
+                    <a v-bind="props.action" class="flex align-items-center gap-2">
+                        <span>{{ item.label }}</span>
+                        <i v-if="session.user.preferences.sortCollectionBy === item.key"
+                           :class="session.user.preferences.sortCollectionDirection === 'asc' ? 'pi pi-arrow-up' : 'pi pi-arrow-down'"
+                           class="ml-auto text-primary text-xs"
+                        />
+                    </a>
+                </template>
+            </Menu>
             <!---->
             <div class="search-container">
                 <InputText
