@@ -5,6 +5,7 @@ import { storeToRefs } from 'pinia'
 import useCollectionStore from '@/stores/collection'
 import usePlaylistStore from '@/stores/playlist'
 import useCoversStore from '@/stores/covers'
+import useLoadingStore from '@/stores/loading'
 import logger from '@/plugins/logger'
 import { useCacheFeeder } from '@/composables/useCacheFeeder'
 
@@ -17,6 +18,7 @@ const {songIndex} = storeToRefs(playlistStore);
 
 // 
 const API = inject('API');
+const loadingStore = useLoadingStore();
 
 //
 const album = computed(() => collectionStore.getAlbum(route.params.albumid));
@@ -32,16 +34,22 @@ watch(songIndex, () => {
     selectedSong.value = playlistStore.songId;
 })
 
-// methods 
+// methods
 async function loadCover() {
-    const buffer = await coversStore.get(route.params.albumid); // buffer is a blob
-    if (buffer) {
-        //logger.log("Album: loadCover", buffer);
-        image.value = URL.createObjectURL(buffer);
+    loadingStore.start();
+    try {
+        const buffer = await coversStore.get(route.params.albumid); // buffer is a blob
+        if (buffer) {
+            //logger.log("Album: loadCover", buffer);
+            image.value = URL.createObjectURL(buffer);
+        }
+        else {
+            logger.log("Album: cover not found for", route.params.albumid);
+            image.value = null;
+        }
     }
-    else {
-        logger.log("Album: cover not found for", route.params.albumid);
-        image.value = null;
+    finally {
+        loadingStore.stop();
     }
 }
 
@@ -49,14 +57,20 @@ async function loadCover() {
 async function loadSongs() {
     const albumid = route.params.albumid;
     if (albumid) {
-        const songs = await API.get('/search/songs', { albumid });
-        albumSongs.value = songs.sort( (a,b) => {
-            if (a.disc_nr < b.disc_nr) return -1;
-            if (a.disc_nr > b.disc_nr) return 1;
-            if (a.track_nr < b.track_nr) return -1;
-            if (a.track_nr > b.track_nr) return 1;
-            return 0;
-        });
+        loadingStore.start();
+        try {
+            const songs = await API.get('/search/songs', { albumid });
+            albumSongs.value = songs.sort( (a,b) => {
+                if (a.disc_nr < b.disc_nr) return -1;
+                if (a.disc_nr > b.disc_nr) return 1;
+                if (a.track_nr < b.track_nr) return -1;
+                if (a.track_nr > b.track_nr) return 1;
+                return 0;
+            });
+        }
+        finally {
+            loadingStore.stop();
+        }
     }
     else {
         logger.error('Bad Route: no album found');

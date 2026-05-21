@@ -2,10 +2,12 @@ import { defineStore } from 'pinia';
 import { inject, ref, computed, watch } from 'vue';
 import logger from '@/plugins/logger'
 import useSessionStore from '@/stores/session'
+import useLoadingStore from '@/stores/loading'
 
 // using a "setup store" to handle circular reference between API and store
 const useCollectionStore = defineStore('collection', () => {
     const session = useSessionStore();
+    const loadingStore = useLoadingStore();
     const sortCollectionBy = computed(() => session.user.preferences.sortCollectionBy);
     const sortCollectionDirection = computed(() => session.user.preferences.sortCollectionDirection);
     //
@@ -99,8 +101,14 @@ const useCollectionStore = defineStore('collection', () => {
         },
         // actions: load and caches the whole collection
         load: async function() {
-            items.value = await API.get('/collection');
-            sortCollection();
+            loadingStore.start();
+            try {
+                items.value = await API.get('/collection');
+                sortCollection();
+            }
+            finally {
+                loadingStore.stop();
+            }
         },
     }
 })

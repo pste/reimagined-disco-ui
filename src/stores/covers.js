@@ -1,10 +1,12 @@
 import { defineStore } from 'pinia';
 import { inject } from 'vue';
+import useLoadingStore from '@/stores/loading'
 
 // using a "setup store" to handle circular reference between API and store
 const useCoversStore = defineStore('covers', () => {
     const API = inject('API');
     const idxDB = inject('idxDB');
+    const loadingStore = useLoadingStore();
     const memCache = new Map(); // album_id → Blob
     const queue = [];
     let isProcessing = false;
@@ -18,6 +20,7 @@ const useCoversStore = defineStore('covers', () => {
 
     async function dequeue() {
         isProcessing = true;
+        loadingStore.start();
         while (queue.length >0) {
             const {album_id,resolve,reject} = queue[0]; // take head, dont remove
             try {
@@ -32,6 +35,7 @@ const useCoversStore = defineStore('covers', () => {
             }
         } // go on
         isProcessing = false;
+        loadingStore.stop();
     }
 
     async function enqueue(album_id) {

@@ -3,6 +3,7 @@ import { ref, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import useSessionStore from '@/stores/session'
 import useCollectionStore from '@/stores/collection'
+import LoadingBar from '@/components/LoadingBar.vue'
 
 //
 const router = useRouter();
@@ -108,7 +109,8 @@ onUnmounted(() => {
 
 <template>
     <!--<Transition name="xtoolbar">-->
-    <Menubar v-if="session.loggedIn" class="fixed top-0 left-0 w-full shadow-6 z-5 p-0">
+    <div v-if="session.loggedIn" class="top-bar fixed top-0 left-0 w-full z-5">
+    <Menubar class="w-full shadow-6 p-0">
         <template #start>
             <!-- Menu -->
             <Button 
@@ -158,14 +160,20 @@ onUnmounted(() => {
                 <Button icon="pi pi-sign-out" class="mr-2" severity="secondary" text @click="logout" />
             </div>
         </template>
-    </Menubar >
+    </Menubar>
+    <LoadingBar />
+    </div>
     <!--</Transition>-->
 </template>
 
 <style scoped>
+.top-bar {
+    margin-bottom: 5px;
+}
+
 .p-menubar {
     padding: 0;
-    margin-bottom: 5px;
+    border-bottom: 0px;
 }
 
 .search-container {
