@@ -44,7 +44,7 @@ export function useStreamedAudio() {
   }
 
   //
-  async function load(audioEl, songId) {
+  async function load(audioEl, songId, meta) {
     // clear before start (again)
     stop();
     //
@@ -140,7 +140,7 @@ export function useStreamedAudio() {
       let appended = 0;
       let totalBytes = 0;
       for (let chunkId = 1; chunkId <= MAX_CHUNKS_GUARD; chunkId++) {
-        const blob = await feeder.getChunk(songId, chunkId);
+        const blob = await feeder.getChunk(songId, chunkId, meta);
         signal.throwIfAborted();
         if (!blob || blob.size === 0) {
           logger.log(`streamedAudio: end of stream at chunk=${chunkId} (blob=${blob ? blob.size : 'undefined'})`);

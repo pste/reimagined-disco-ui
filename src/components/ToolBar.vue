@@ -41,6 +41,13 @@ const menuItems = ref([
                 }
             },
             {
+                label: 'Cache',
+                icon: 'pi pi-database',
+                command: () => {
+                    router.push({ name: 'cache' });
+                }
+            },
+            {
                 label: 'Refresh',
                 icon: 'pi pi-refresh',
                 command: async() => {

@@ -19,7 +19,7 @@ export function useCacheFeeder() {
     }
 
     // single entry point for chunk retrieval: cache → in-flight dedup → network
-    async function getChunk(songId, chunkId) {
+    async function getChunk(songId, chunkId, meta) {
         const key = cacheKey(songId, chunkId);
 
         const cached = await idxDB.get(CACHE_TABLE, key);
@@ -36,7 +36,9 @@ export function useCacheFeeder() {
                 const size = blob?.size ?? 0;
                 logger.log(`cacheFeeder: fetched song=${songId} chunk=${chunkId} size=${size}`);
                 if (blob && size > 0) {
-                    await idxDB.put(CACHE_TABLE, key, { blob, songId, chunkId, expiresAt: Date.now() + CACHE_TTL_MS, ttlMs: CACHE_TTL_MS });
+                    const record = { blob, songId, chunkId, expiresAt: Date.now() + CACHE_TTL_MS, ttlMs: CACHE_TTL_MS };
+                    if (meta) { record.meta = meta; }
+                    await idxDB.put(CACHE_TABLE, key, record);
                 }
                 return blob;
             }
@@ -49,9 +51,9 @@ export function useCacheFeeder() {
     }
 
     // background prefetch: warm the cache for a song (fire-and-forget friendly)
-    async function prefetch(songId) {
+    async function prefetch(songId, meta) {
         for (let chunkId = 1; chunkId < MAX_CHUNKS_GUARD; chunkId++) {
-            const blob = await getChunk(songId, chunkId);
+            const blob = await getChunk(songId, chunkId, meta);
             if (!blob || blob.size === 0) break;
         }
         logger.log(`cacheFeeder: prefetch done for ${songId}`);

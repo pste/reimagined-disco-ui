@@ -144,15 +144,18 @@ watch(songIndex, async (val) => {
       logger.log(`audioplayer: ${shouldPlay ? 'running' : 'loading'} ${song_id}`);
       playlistStore.saveLastPlayed();
 
+      const meta = { title: song.title, artist: song.artist ?? '', album: song.album ?? '' };
+
       API.post('/stream/song', { song_id });
-      await streamer.load(audioElement.value, song_id);
+      await streamer.load(audioElement.value, song_id, meta);
 
       if (shouldPlay) {
         music.play();
         // warm the cache for the next track so the gap at track change is minimal
         const nextSong = playlistStore.playList[val + 1];
         if (nextSong?.song_id) {
-          feeder.prefetch(nextSong.song_id).catch((err) => {
+          const nextMeta = { title: nextSong.title, artist: nextSong.artist ?? '', album: nextSong.album ?? '' };
+          feeder.prefetch(nextSong.song_id, nextMeta).catch((err) => {
             logger.log('audioplayer: prefetch next failed', err);
           });
         }

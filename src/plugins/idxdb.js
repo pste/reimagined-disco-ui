@@ -121,6 +121,38 @@ async function upsert(tableName, id, data) {
 }
 
 //
+async function getAll(tableName) {
+    await ready;
+    return new Promise((resolve, reject) => {
+        const store = db
+            .transaction([tableName], "readonly")
+            .objectStore(tableName);
+        const req = store.getAll();
+        req.onsuccess = (event) => resolve(event.target.result);
+        req.onerror = (event) => {
+            logger.error("idxDB getAll error:", event);
+            reject(event);
+        };
+    });
+}
+
+//
+async function remove(tableName, id) {
+    await ready;
+    return new Promise((resolve, reject) => {
+        const req = db
+            .transaction([tableName], "readwrite")
+            .objectStore(tableName)
+            .delete(id);
+        req.onsuccess = () => resolve();
+        req.onerror = (event) => {
+            logger.error("idxDB remove error:", event);
+            reject(event);
+        };
+    });
+}
+
+//
 async function sweepExpired(tableName) {
     await ready;
     return new Promise((resolve, reject) => {
@@ -160,6 +192,8 @@ function createDB() {
         get: get,
         put: upsert,
         sweep: sweepExpired,
+        getAll: getAll,
+        remove: remove,
     }
 }
 
