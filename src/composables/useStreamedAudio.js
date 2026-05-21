@@ -1,6 +1,7 @@
 import { ref, inject } from 'vue'
 import logger from '@/plugins/logger'
 import { useCacheFeeder } from '@/composables/useCacheFeeder'
+import useErrorsStore from '@/stores/errors'
 
 const MIME_TYPE = 'audio/mpeg';
 const CACHE_TABLE = 'chunks';
@@ -8,9 +9,18 @@ const MAX_CHUNKS_GUARD = 500;
 
 // feeder.prefetch(nextSongId) fire-and-forget dopo streamer.load.
 
+function streamErrorMessage(err) {
+  if (!err) { return 'Errore sconosciuto durante la riproduzione.'; }
+  if (err.name === 'QuotaExceededError') { return 'Buffer audio pieno: impossibile continuare la riproduzione.'; }
+  if (err.name === 'NotSupportedError')  { return 'Formato audio non supportato dal browser.'; }
+  if (err.name === 'InvalidStateError')  { return 'Errore nello stato del player audio.'; }
+  return `Errore riproduzione: ${err.message ?? err}`;
+}
+
 export function useStreamedAudio() {
   const idxDB = inject('idxDB');
   const feeder = useCacheFeeder();
+  const errorsStore = useErrorsStore();
 
   const loading = ref(false);
   const error = ref(null);
@@ -198,6 +208,8 @@ export function useStreamedAudio() {
       logger.error('streamedAudio error:', err);
       error.value = err;
       loading.value = false;
+      const msg = streamErrorMessage(err);
+      errorsStore.showError(msg);
       if (mediaSource && mediaSource.readyState === 'open') {
         try { mediaSource.endOfStream('network'); } catch (_) { /* ignore */ }
       }
