@@ -51,9 +51,14 @@ function secsToTime(secs) {
   }
 };
 
-// computed 
+// computed
 const songTimeText = computed(() => {
   return `${secsToTime(songCurrentTime.value)} / ${secsToTime(songDuration.value)}`
+});
+
+const currentSong = computed(() => {
+  const idx = songIndex.value;
+  return (idx >= 0) ? (playlistStore.playList[idx] ?? null) : null;
 });
 
 // audioelement player utils
@@ -243,6 +248,15 @@ function skipForward() {
 <template>
   <Toolbar v-show="playlistStore.hasSongs" class="app-footer fixed bottom-0 left-0 w-full shadow-6 z-5 p-0">
     <template #start>
+      <div class="player-wrap">
+        <!-- song info row -->
+        <div v-if="currentSong" class="song-info-row">
+          <span class="song-artist">{{ currentSong.artist }}</span>
+          <span class="song-sep"> · </span>
+          <span class="song-album">{{ currentSong.album }}</span>
+          <span class="song-sep"> · </span>
+          <span class="song-title">{{ currentSong.title }}</span>
+        </div>
       <div class="player-layout">
         <!-- home -->
         <Button class="p-item p-home" icon="pi pi-bullseye" @click="gotoDisc" severity="secondary" rounded text aria-label="return" />
@@ -281,6 +295,7 @@ function skipForward() {
         <Button v-if="muted" class="p-item p-mute" @click="muted=false" icon="pi pi-bell" severity="primary" rounded text aria-label="unmute" />
         <Button v-else        class="p-item p-mute" @click="muted=true"  icon="pi pi-bell-slash" severity="secondary" rounded text aria-label="mute" />
       </div>
+      </div>
     </template>
   </Toolbar>
 
@@ -291,6 +306,30 @@ function skipForward() {
 :deep(.p-toolbar-start) {
   flex: 1;
   min-width: 0;
+}
+
+.player-wrap {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+}
+
+.song-info-row {
+  padding: 0.3rem 0.75rem 0;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.75;
+}
+
+.song-sep {
+  opacity: 0.5;
+}
+
+.song-title {
+  font-weight: 600;
 }
 
 .player-layout {

@@ -60,13 +60,15 @@ async function loadSongs() {
         loadingStore.start();
         try {
             const songs = await API.get('/search/songs', { albumid });
+            const artistName = album.value?.name ?? '';
+            const albumTitle = album.value?.title ?? '';
             albumSongs.value = songs.sort( (a,b) => {
                 if (a.disc_nr < b.disc_nr) return -1;
                 if (a.disc_nr > b.disc_nr) return 1;
                 if (a.track_nr < b.track_nr) return -1;
                 if (a.track_nr > b.track_nr) return 1;
                 return 0;
-            });
+            }).map(s => ({ ...s, artist: artistName, album: albumTitle }));
         }
         finally {
             loadingStore.stop();
