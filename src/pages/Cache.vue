@@ -80,9 +80,11 @@ function formatSize(bytes) {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
-function formatDate(ts) {
+function daysUntil(ts) {
     if (!ts) return '—';
-    return new Date(ts).toLocaleDateString();
+    const days = Math.ceil((ts - Date.now()) / (1000 * 60 * 60 * 24));
+    if (days <= 0) return 'scaduto';
+    return `${days} gg`;
 }
 
 onMounted(loadCache);
@@ -143,9 +145,9 @@ onMounted(loadCache);
                         </template>
                     </Column>
 
-                    <Column header="Scade il">
+                    <Column header="Scade tra">
                         <template #body="{ data }">
-                            {{ formatDate(data.expiresAt) }}
+                            {{ daysUntil(data.expiresAt) }}
                         </template>
                     </Column>
 
