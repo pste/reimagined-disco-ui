@@ -2,7 +2,7 @@ import { inject } from 'vue'
 import logger from '@/plugins/logger'
 
 const CACHE_TABLE = 'chunks';
-const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 gg
+const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 gg
 const MAX_CHUNKS_GUARD = 100;
 
 // module-level: dedup concurrent fetches across feeder instances
