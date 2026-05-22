@@ -207,15 +207,19 @@ export function useStreamedAudio() {
       // drain after each chunk, trim played data, then throttle if buffer is full.
       let appended = 0;
       let totalBytes = 0;
-      for (let chunkId = 1; chunkId <= MAX_CHUNKS_GUARD; chunkId++) {
+      let maxChunks = MAX_CHUNKS_GUARD;
+      for (let chunkId = 1; chunkId <= maxChunks; chunkId++) {
         const { blob, songMeta } = await feeder.getChunk(songId, chunkId, meta);
         signal.throwIfAborted();
         if (!blob || blob.size === 0) {
           logger.log(`streamedAudio: end of stream at chunk=${chunkId} (blob=${blob ? blob.size : 'undefined'})`);
           break;
         }
-        if (chunkId === 1 && songMeta?.duration > 0 && mediaSource.readyState === 'open') {
-          try { mediaSource.duration = songMeta.duration; } catch (_) {}
+        if (chunkId === 1 && songMeta) {
+          if ((songMeta.totalChunks ?? 0) > 0) { maxChunks = songMeta.totalChunks; }
+          if ((songMeta.duration ?? 0) > 0 && mediaSource.readyState === 'open') {
+            try { mediaSource.duration = songMeta.duration / 1000; } catch (_) {}
+          }
         }
         const buf = await blob.arrayBuffer();
         signal.throwIfAborted();
