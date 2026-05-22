@@ -27,7 +27,7 @@ export function useStreamedAudio() {
 
   let mediaSource = null;
   let sourceBuffer = null;
-  let currentObjectURL = null;
+  let currentObjectURL = null; // the audioElement refers to this always changing URL
   let abortController = null;
 
   // on stop we clean
@@ -57,7 +57,8 @@ export function useStreamedAudio() {
   async function load(audioEl, songId, meta) {
     // clear before start (again)
     stop();
-    //
+
+    // init
     const ac = new AbortController(); // every load creates an AbortController
     const signal = ac.signal;
     abortController = ac;
@@ -73,6 +74,7 @@ export function useStreamedAudio() {
       currentObjectURL = URL.createObjectURL(mediaSource);
       audioEl.src = currentObjectURL;
 
+      // build MediaSource events
       await new Promise((resolve, reject) => {
         const onOpen = () => { mediaSource.removeEventListener('sourceopen', onOpen); resolve(); };
         const onErr = (e) => { mediaSource.removeEventListener('error', onErr); reject(e); };
@@ -87,6 +89,7 @@ export function useStreamedAudio() {
       const queue = [];
       let drainResolve = null; // promise to resolve draining
       let drainReject = null; // promise to reject draining
+      let pendingPumpError = null; // appendBuffer can throw synchronously before drainReject is set
 
       // unblock waitForDrain on abort so the load can exit cleanly
       signal.addEventListener('abort', () => {
@@ -108,6 +111,12 @@ export function useStreamedAudio() {
         catch (err) {
           if (drainReject) {
             drainReject(err);
+            drainResolve = null;
+            drainReject = null;
+          } else {
+            // drainReject not yet set (synchronous throw before waitForDrain was called):
+            // save the error so waitForDrain picks it up on the next call
+            pendingPumpError = err;
           }
         }
       }
@@ -132,9 +141,14 @@ export function useStreamedAudio() {
         pumpQueue();
       }
 
-      //
       function waitForDrain() {
         return new Promise((resolve, reject) => {
+          if (pendingPumpError) {
+            const err = pendingPumpError;
+            pendingPumpError = null;
+            reject(err);
+            return;
+          }
           if (queue.length === 0 && !sourceBuffer.updating) {
             resolve();
             return;
@@ -156,13 +170,14 @@ export function useStreamedAudio() {
           return;
         }
         await new Promise((resolve) => {
-          const onEnd = () => { sourceBuffer.removeEventListener('updateend', onEnd); resolve(); };
-          sourceBuffer.addEventListener('updateend', onEnd);
+          const sb = sourceBuffer; // capture ref: stop() may null the module-level var mid-await
+          const onEnd = () => { sb.removeEventListener('updateend', onEnd); resolve(); };
+          sb.addEventListener('updateend', onEnd);
           try {
-            sourceBuffer.remove(start, safeEnd);
+            sb.remove(start, safeEnd);
           }
           catch (_) {
-            sourceBuffer.removeEventListener('updateend', onEnd);
+            sb.removeEventListener('updateend', onEnd);
             resolve();
           }
         });

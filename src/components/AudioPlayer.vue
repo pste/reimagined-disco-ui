@@ -152,7 +152,16 @@ watch(songIndex, async (val) => {
       const meta = { title: song.title, artist: song.artist ?? '', album: song.album ?? '' };
 
       API.post('/stream/song', { song_id });
+      // start playing as soon as the browser has enough data buffered (before full load)
+      // so trimBuffer can work during the loading phase and prevent MSE quota overflow
+      const earlyPlay = () => { if (isPlaying.value) { music.play(); } };
+      audioElement.value.addEventListener('canplay', earlyPlay, { once: true });
+
       await streamer.load(audioElement.value, song_id, meta);
+
+      audioElement.value.removeEventListener('canplay', earlyPlay);
+      // bail if songIndex changed while loading (user skipped song)
+      if (songIndex.value !== val) { return; }
 
       if (shouldPlay) {
         music.play();

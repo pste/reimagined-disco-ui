@@ -63,3 +63,7 @@ src/
 ├── assets/         # Static assets
 └── main.js         # Application entry point
 ```
+
+## Internals
+
+- [Streamer.md](Streamer.md) — MSE audio streaming architecture: pipeline, chunk queue, SourceBuffer lifecycle, error handling
