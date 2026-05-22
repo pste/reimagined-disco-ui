@@ -10,6 +10,7 @@ const usePlaylistStore = defineStore('playlist', () => {
     const playList = ref([]);
     const songIndex = ref(-1); // the index into the playList
     const isPlaying = ref(false); // user playback intent: true = user wants music playing
+    const currentSongDuration = ref(0); // seconds — set by streamer from chunk 1 metadata
 
     // computed
     const hasSongs = computed(() => {
@@ -42,6 +43,7 @@ const usePlaylistStore = defineStore('playlist', () => {
     function clear() {
         playList.value = [];
         songIndex.value = -1;
+        currentSongDuration.value = 0;
     }
 
     function saveLastPlayed() {
@@ -104,6 +106,7 @@ const usePlaylistStore = defineStore('playlist', () => {
         playList,
         songIndex,
         isPlaying,
+        currentSongDuration,
 
         // getters
         hasSongs,

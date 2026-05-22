@@ -34,7 +34,10 @@ export function useCacheFeeder() {
 
         const cached = await idxDB.get(CACHE_TABLE, key);
         if (cached?.blob) {
-            return { blob: cached.blob, songMeta: cached.songMeta ?? null };
+            // chunk 1 must carry songMeta; old cache records lack it → fall through to re-fetch
+            if (chunkId !== 1 || cached.songMeta) {
+                return { blob: cached.blob, songMeta: cached.songMeta ?? null };
+            }
         }
 
         if (inFlight.has(key)) return inFlight.get(key);

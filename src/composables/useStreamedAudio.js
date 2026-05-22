@@ -2,6 +2,7 @@ import { ref, inject } from 'vue'
 import logger from '@/plugins/logger'
 import { useCacheFeeder } from '@/composables/useCacheFeeder'
 import useErrorsStore from '@/stores/errors'
+import usePlaylistStore from '@/stores/playlist'
 
 const MIME_TYPE = 'audio/mpeg';
 const CACHE_TABLE = 'chunks';
@@ -21,6 +22,7 @@ export function useStreamedAudio() {
   const idxDB = inject('idxDB');
   const feeder = useCacheFeeder();
   const errorsStore = useErrorsStore();
+  const playlistStore = usePlaylistStore();
 
   const loading = ref(false);
   const error = ref(null);
@@ -215,17 +217,19 @@ export function useStreamedAudio() {
           logger.log(`streamedAudio: end of stream at chunk=${chunkId} (blob=${blob ? blob.size : 'undefined'})`);
           break;
         }
-        if (chunkId === 1 && songMeta) {
-          if ((songMeta.totalChunks ?? 0) > 0) { maxChunks = songMeta.totalChunks; }
-          if ((songMeta.duration ?? 0) > 0 && mediaSource.readyState === 'open') {
-            try { mediaSource.duration = songMeta.duration / 1000; } catch (_) {}
-          }
+        // update loop bound immediately (pure JS variable, no MSE interaction needed)
+        if (chunkId === 1 && (songMeta?.totalChunks ?? 0) > 0) {
+          maxChunks = songMeta.totalChunks;
         }
         const buf = await blob.arrayBuffer();
         signal.throwIfAborted();
         enqueueChunk(buf);
         await waitForDrain();
         signal.throwIfAborted();
+        // propagate duration to store after first chunk is appended
+        if (chunkId === 1 && (songMeta?.duration ?? 0) > 0) {
+          playlistStore.currentSongDuration = songMeta.duration;
+        }
         await trimBuffer();
         signal.throwIfAborted();
         await throttleIfBufferFull();

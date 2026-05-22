@@ -24,11 +24,10 @@ let coverObjectURL = null;
 
 // refs
 const audioElement = useTemplateRef('audioElement');
-const { songIndex, isPlaying } = storeToRefs(playlistStore);
+const { songIndex, isPlaying, currentSongDuration: songDuration } = storeToRefs(playlistStore);
 const volumeValue = ref(100); // volume slider/ 
 const muted = ref(false); // mute button
 const songCurrentTime = ref(0); // song time from audioelement updates
-const songDuration = ref(0); // song duration from audioelement updates
 const sliderTime = ref(0); // time slider
 const manualSeek = ref(false); // active while manual seeking on time slider
 const showRemaining = ref(false); // toggle elapsed ↔ remaining
@@ -126,15 +125,6 @@ onMounted(() => {
 
   audioElement.value.addEventListener('waiting', () => { buffering.value = true; });
   audioElement.value.addEventListener('playing', () => { buffering.value = false; });
-
-  // with MSE, duration is Infinity until endOfStream() finalizes it,
-  // so we also listen to durationchange and guard against non-finite values
-  function updateDuration() {
-    const d = audioElement.value.duration;
-    songDuration.value = (Number.isFinite(d) && d > 0) ? d : 0;
-  }
-  audioElement.value.addEventListener('loadedmetadata', updateDuration);
-  audioElement.value.addEventListener('durationchange', updateDuration);
 
   audioElement.value.addEventListener('timeupdate', function() {
     const val = audioElement.value.currentTime || 0;
