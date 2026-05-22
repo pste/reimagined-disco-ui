@@ -32,6 +32,7 @@ const songDuration = ref(0); // song duration from audioelement updates
 const sliderTime = ref(0); // time slider
 const manualSeek = ref(false); // active while manual seeking on time slider
 const showRemaining = ref(false); // toggle elapsed ↔ remaining
+const buffering = ref(false); // true while initial load or mid-playback stall
 
 // formatting utils 
 function padTime(time) {
@@ -112,9 +113,13 @@ onMounted(() => {
       logger.log('audioplayer:  Error: ' + audioElement.value.error.message);
       logger.log('audioplayer:  Error evt: ' + event.currentTarget.error.code);
       logger.log('audioplayer:  Error evt: ' + event.currentTarget.error.message);
+      buffering.value = false;
       isPlaying.value = false;
       music.stop();
   };
+
+  audioElement.value.addEventListener('waiting', () => { buffering.value = true; });
+  audioElement.value.addEventListener('playing', () => { buffering.value = false; });
 
   // with MSE, duration is Infinity until endOfStream() finalizes it,
   // so we also listen to durationchange and guard against non-finite values
@@ -148,13 +153,14 @@ watch(songIndex, async (val) => {
 
       logger.log(`audioplayer: ${shouldPlay ? 'running' : 'loading'} ${song_id}`);
       playlistStore.saveLastPlayed();
+      buffering.value = true;
 
       const meta = { title: song.title, artist: song.artist ?? '', album: song.album ?? '' };
 
       API.post('/stream/song', { song_id });
       // start playing as soon as the browser has enough data buffered (before full load)
       // so trimBuffer can work during the loading phase and prevent MSE quota overflow
-      const earlyPlay = () => { if (isPlaying.value) { music.play(); } };
+      const earlyPlay = () => { buffering.value = false; if (isPlaying.value) { music.play(); } };
       audioElement.value.addEventListener('canplay', earlyPlay, { once: true });
 
       await streamer.load(audioElement.value, song_id, meta);
@@ -191,6 +197,7 @@ watch(songIndex, async (val) => {
       }
     }
     else { // no more songs
+      buffering.value = false;
       isPlaying.value = false;
       music.stop();
       songDuration.value = 0;
@@ -277,8 +284,9 @@ function skipForward() {
       <div class="player-layout">
         <!-- home -->
         <Button class="p-item p-home" icon="pi pi-bullseye" @click="gotoDisc" severity="secondary" rounded text aria-label="return" />
-        <!-- play/pause -->
-        <Button v-if="isPlaying" class="p-item p-play" icon="pi pi-pause" @click="btnPauseClick" severity="primary" rounded text aria-label="pause" />
+        <!-- play/pause/loading -->
+        <Button v-if="buffering" class="p-item p-play" :loading="true" severity="secondary" rounded text aria-label="caricamento" />
+        <Button v-else-if="isPlaying" class="p-item p-play" icon="pi pi-pause" @click="btnPauseClick" severity="primary" rounded text aria-label="pause" />
         <Button v-else class="p-item p-play" :disabled="!playlistStore.hasSongs" icon="pi pi-play" @click="btnPlayClick" severity="secondary" rounded text aria-label="play" />
         <!-- time chip -->
         <Chip v-if="songDuration > 0" :label="songTimeText" class="p-item p-time" style="cursor:pointer" @click="showRemaining = !showRemaining" />
