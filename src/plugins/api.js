@@ -75,9 +75,9 @@ function createAPI() {
             }
         },
 
-        post: async (url, data) => {
+        post: async (url, data, query) => {
             try {
-                const res = await makeRequest("POST", {'Content-Type': 'application/json'}, url, undefined, data);
+                const res = await makeRequest("POST", {'Content-Type': 'application/json'}, url, query, data);
                 const resdata = await res.json();
                 return resdata;
             }

@@ -18,43 +18,60 @@ Two composables handle the work:
 ## The Pipeline
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│  useCacheFeeder.js                                                  │
-│  getChunk()  →  IDB.get()  ──hit──→  Blob                          │
-│                     └──miss──→  API.getBlob()  →  network  →  Blob │
-└───────────────────────────┬─────────────────────────────────────────┘
-                            │ Blob
-┌───────────────────────────▼─────────────────────────────────────────┐
-│  useStreamedAudio.js — for loop                                     │
-│  getChunk() → blob.arrayBuffer() → enqueueChunk(buf)               │
-│  await waitForDrain()   ←──────────────────────────┐               │
-│  await trimBuffer()                                 │               │
-│  await throttleIfBufferFull() ←── timeupdate ───────────────────┐  │
-└───────────────────────────┬─────────────────────────┼────────────┼──┘
-                            │ queue.push()            │ resolve()  │
-┌───────────────────────────▼─────────────────────────┴────────────┼──┐
-│  queue[]  (internal array)                                        │  │
-│  enqueueChunk() → push + pumpQueue()                              │  │
-│  pumpQueue()    → shift + appendBuffer()                          │  │
-│                   (if updating=true: waits for updateend)         │  │
-└───────────────────────────┬───────────────────────────────────────┼──┘
-                            │ appendBuffer(ArrayBuffer)             │
-┌───────────────────────────▼───────────────────────────────────────┼──┐
-│  SourceBuffer  (browser MSE)                                      │  │
-│  appendBuffer()  →  updating=true                                 │  │
-│  [processes data]→  updating=false  →  fires: updateend ──────────┤  │
-│  remove(start,end) ← trimBuffer()                                 │  │
-│  endOfStream()     ← end of loop                                  │  │
-└───────────────────────────┬───────────────────────────────────────┘  │
-                            │ decoded audio stream                      │
-┌───────────────────────────▼───────────────────────────────────────────┐
-│  <audio> element  (browser)                                           │
-│  fires: canplay    → earlyPlay() → music.play()   [AudioPlayer.vue]   │
-│  fires: timeupdate → update slider / time ────────────────────────────┘
-│                    → throttleIfBufferFull() unblocks [AudioPlayer.vue] │
-│  fires: ended      → playlistStore.gotoNext()     [AudioPlayer.vue]   │
-│  fires: error      → music.stop() + showError()   [AudioPlayer.vue]   │
-└───────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│  Backend  /chunk/song?id=X&chunkIndex=N                              │
+│  chunk 1  →  { metadata: { duration, totalChunks }, data: <b64> }   │
+│  chunk N  →  { data: <b64> }                                         │
+└───────────────────────────┬──────────────────────────────────────────┘
+                            │ JSON
+┌───────────────────────────▼──────────────────────────────────────────┐
+│  useCacheFeeder.js                                                   │
+│  getChunk()  →  IDB.get()  ──hit──→  { blob, songMeta }             │
+│    (chunk 1 without songMeta → re-fetch from network, self-healing)  │
+│                    └──miss──→  API.get()  →  base64ToBlob()          │
+│                               songMeta = json.metadata               │
+│                               IDB.put({ blob, songMeta, ... })       │
+│                               return  { blob, songMeta }             │
+└───────────────────────────┬──────────────────────────────────────────┘
+                            │ { blob, songMeta }
+┌───────────────────────────▼──────────────────────────────────────────┐
+│  useStreamedAudio.js — for loop  (bound = songMeta.totalChunks)      │
+│  getChunk() → blob.arrayBuffer() → enqueueChunk(buf)                │
+│  await waitForDrain()   ←───────────────────────────┐               │
+│  chunk 1: playlistStore.currentSongDuration = duration               │
+│  await trimBuffer()                                  │               │
+│  await throttleIfBufferFull() ←── timeupdate ────────────────────┐  │
+└───────────────────────────┬──────────────────────────┼────────────┼──┘
+                            │ queue.push()             │ resolve()  │
+┌───────────────────────────▼──────────────────────────┴────────────┼──┐
+│  queue[]  (internal array)                                         │  │
+│  enqueueChunk() → push + pumpQueue()                               │  │
+│  pumpQueue()    → shift + appendBuffer()                           │  │
+│                   (if updating=true: waits for updateend)          │  │
+└───────────────────────────┬────────────────────────────────────────┼──┘
+                            │ appendBuffer(ArrayBuffer)              │
+┌───────────────────────────▼────────────────────────────────────────┼──┐
+│  SourceBuffer  (browser MSE)                                       │  │
+│  appendBuffer()  →  updating=true                                  │  │
+│  [processes data]→  updating=false  →  fires: updateend ───────────┤  │
+│  remove(start,end) ← trimBuffer()                                  │  │
+│  endOfStream()     ← end of loop                                   │  │
+└───────────────────────────┬────────────────────────────────────────┘  │
+                            │ decoded audio stream                       │
+┌───────────────────────────▼────────────────────────────────────────────┐
+│  <audio> element  (browser)                                            │
+│  fires: canplay    → earlyPlay() → music.play()   [AudioPlayer.vue]    │
+│  fires: timeupdate → update slider / time ─────────────────────────────┘
+│                    → throttleIfBufferFull() unblocks [AudioPlayer.vue]  │
+│  fires: ended      → playlistStore.gotoNext()     [AudioPlayer.vue]    │
+│  fires: error      → music.stop() + showError()   [AudioPlayer.vue]    │
+└────────────────────────────────────────────────────────────────────────┘
+                            │ currentSongDuration (seconds)
+┌───────────────────────────▼────────────────────────────────────────────┐
+│  playlistStore.currentSongDuration                                     │
+│  written by useStreamedAudio after chunk 1 drain                       │
+│  read by AudioPlayer.vue via storeToRefs → drives chip + slider        │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -113,9 +130,36 @@ This throttle is only active when `currentTime > 0`. Before playback has started
 
 Without this, `music.play()` would only be called after `load()` returns (i.e., after all chunks have been processed), meaning `currentTime = 0` throughout the entire loading phase.
 
+### Chunk Format and Metadata
+
+The backend returns JSON for every chunk:
+
+```json
+{ "data": "<base64-encoded audio>" }
+```
+
+Chunk 1 also includes a `metadata` field:
+
+```json
+{ "metadata": { "duration": 214.3, "totalChunks": 7 }, "data": "..." }
+```
+
+`useCacheFeeder` decodes `data` via `atob` + `Uint8Array` → `Blob` (`audio/mpeg`). The `metadata` object is saved alongside the blob in IDB so subsequent cache hits also carry it.
+
+If a cached chunk 1 record is missing `songMeta` (old cache format), the feeder falls through to a network re-fetch automatically — the record is updated in IDB after the fetch.
+
+### totalChunks and Duration
+
+After chunk 1 is fetched and drained into the `SourceBuffer`, `useStreamedAudio` applies both values from `songMeta`:
+
+- `totalChunks` → replaces `MAX_CHUNKS_GUARD` as the loop upper bound, so the loop exits exactly at the last chunk instead of waiting for an empty blob sentinel.
+- `duration` (seconds, calculated from bitrate + file size) → written to `playlistStore.currentSongDuration`, which `AudioPlayer.vue` reads reactively via `storeToRefs` to drive the time chip and seek slider.
+
+The duration is applied **after** `waitForDrain()` on chunk 1, not before, because the audio element ignores `mediaSource.duration` hints until actual data has been appended to the `SourceBuffer`.
+
 ### endOfStream
 
-When the for loop receives an empty or null blob from the feeder, it knows the song has no more chunks. After a final `waitForDrain`, it calls `mediaSource.endOfStream()`. This signals the browser that the stream is complete: the audio element finalises the duration and playback can reach the natural end of the song.
+When the for loop has processed all `totalChunks` chunks, after a final `waitForDrain`, it calls `mediaSource.endOfStream()`. This signals the browser that the stream is complete: the audio element finalises the duration and playback can reach the natural end of the song.
 
 ### Abort and Cleanup
 
@@ -137,7 +181,7 @@ The `AbortError` is caught and swallowed silently — it is not an error, just a
 | `QuotaExceededError` | `pumpQueue` → `pendingPumpError` → `waitForDrain` | Shows "Buffer audio pieno" |
 | `NotSupportedError` | outer `catch` in `load()` | Shows format error |
 | `InvalidStateError` | outer `catch` in `load()` | Shows player state error |
-| Network / fetch error | `API.getBlob` catch | Shows error toast; `undefined` return breaks the chunk loop |
+| Network / fetch error | `API.get` catch | Shows error toast; `undefined` return → `blob` null → breaks the chunk loop |
 | `AbortError` | outer `catch` in `load()` | Silent exit (not an error) |
 
 ### pendingPumpError

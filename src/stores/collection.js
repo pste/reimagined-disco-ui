@@ -99,6 +99,10 @@ const useCollectionStore = defineStore('collection', () => {
                 return null;
             }
         },
+        updateAlbum: function(album_id, patch) {
+            const item = items.value.find(el => el.album_id == album_id);
+            if (item) { Object.assign(item, patch); }
+        },
         // actions: load and caches the whole collection
         load: async function() {
             loadingStore.start();

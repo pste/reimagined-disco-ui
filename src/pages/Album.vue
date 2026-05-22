@@ -1,6 +1,6 @@
 <script setup>
 import { inject, ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import useCollectionStore from '@/stores/collection'
 import usePlaylistStore from '@/stores/playlist'
@@ -11,6 +11,7 @@ import { useCacheFeeder } from '@/composables/useCacheFeeder'
 
 // init stuff
 const route = useRoute();
+const router = useRouter();
 const collectionStore = useCollectionStore();
 const coversStore = useCoversStore();
 const playlistStore = usePlaylistStore();
@@ -28,7 +29,6 @@ const album = computed(() => collectionStore.getAlbum(route.params.albumid));
 const selectedSong = ref(); // id of the song selected
 const albumSongs = ref([]); // decouple album songs from playlist songs
 const image = ref(null); // can't have async computed, so I'm using a ref
-const coverRefreshing = ref(false);
 
 // when the player changes, we update the UI
 watch(songIndex, () => {
@@ -37,20 +37,6 @@ watch(songIndex, () => {
 })
 
 // methods
-async function refreshCover() {
-    coverRefreshing.value = true;
-    try {
-        const buffer = await coversStore.refresh(route.params.albumid);
-        if (buffer) {
-            if (image.value) { URL.revokeObjectURL(image.value); }
-            image.value = URL.createObjectURL(buffer);
-        }
-    }
-    finally {
-        coverRefreshing.value = false;
-    }
-}
-
 async function loadCover() {
     loadingStore.start();
     try {
@@ -149,18 +135,8 @@ onUnmounted(() => {
                 <div class="flex flex-column md:flex-row gap-4">
 
                     <!-- album cover -->
-                    <div class="flex flex-none p-0 align-items-center justify-content-center" style="position: relative">
+                    <div class="flex flex-none p-0 align-items-center justify-content-center">
                         <img style="max-width: 350px" class="w-full h-auto border-round-md shadow-2" :src="image" />
-                        <Button
-                            icon="pi pi-refresh"
-                            severity="secondary"
-                            size="small"
-                            rounded
-                            :loading="coverRefreshing"
-                            @click="refreshCover"
-                            style="position: absolute; bottom: -1rem; right: -1rem; opacity: 0.85; width: 1.75rem; height: 1.75rem; font-size: 0.75rem"
-                            aria-label="Aggiorna cover"
-                        />
                     </div>
 
                     <!-- details and songs -->
@@ -174,6 +150,15 @@ onUnmounted(() => {
                                 severity="secondary"
                                 :disabled="albumSongs.length === 0"
                                 @click="playFromStart"
+                            />
+                            <Button
+                                icon="pi pi-pencil"
+                                rounded
+                                text
+                                severity="secondary"
+                                :disabled="albumSongs.length === 0"
+                                @click="router.push({ name: 'album-edit', params: { albumid: route.params.albumid } })"
+                                aria-label="Modifica album"
                             />
                         </div>
                         <div class="text-color-secondary mb-3">{{ album?.name }}</div>

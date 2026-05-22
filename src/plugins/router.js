@@ -6,6 +6,7 @@ import CollectionView from '../pages/Collection.vue'
 import AlbumView from '../pages/Album.vue'
 import ParametersView from '../pages/Parameters.vue'
 import CacheView from '../pages/Cache.vue'
+import AlbumEditView from '../pages/AlbumEdit.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -37,6 +38,12 @@ const router = createRouter({
         path: '/cache',
         name: 'cache',
         component: CacheView,
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/album/:albumid/edit',
+        name: 'album-edit',
+        component: AlbumEditView,
         meta: { requiresAuth: true }
     },
     
