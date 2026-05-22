@@ -16,9 +16,10 @@ const coversStore = useCoversStore();
 const playlistStore = usePlaylistStore();
 const {songIndex} = storeToRefs(playlistStore);
 
-// 
+//
 const API = inject('API');
 const loadingStore = useLoadingStore();
+const feeder = useCacheFeeder();
 
 //
 const album = computed(() => collectionStore.getAlbum(route.params.albumid));
@@ -107,6 +108,12 @@ onMounted(async() => {
   // update selected song for this view
   if (playlistStore.songId) {
     selectedSong.value = playlistStore.songId;
+  }
+  // warm the cache for the first track as soon as the album is opened
+  const firstSong = albumSongs.value[0];
+  if (firstSong) {
+    const meta = { title: firstSong.title, artist: firstSong.artist ?? '', album: firstSong.album ?? '' };
+    feeder.prefetch(firstSong.song_id, meta).catch(() => {});
   }
 })
 
