@@ -208,11 +208,14 @@ export function useStreamedAudio() {
       let appended = 0;
       let totalBytes = 0;
       for (let chunkId = 1; chunkId <= MAX_CHUNKS_GUARD; chunkId++) {
-        const blob = await feeder.getChunk(songId, chunkId, meta);
+        const { blob, songMeta } = await feeder.getChunk(songId, chunkId, meta);
         signal.throwIfAborted();
         if (!blob || blob.size === 0) {
           logger.log(`streamedAudio: end of stream at chunk=${chunkId} (blob=${blob ? blob.size : 'undefined'})`);
           break;
+        }
+        if (chunkId === 1 && songMeta?.duration > 0 && mediaSource.readyState === 'open') {
+          try { mediaSource.duration = songMeta.duration; } catch (_) {}
         }
         const buf = await blob.arrayBuffer();
         signal.throwIfAborted();

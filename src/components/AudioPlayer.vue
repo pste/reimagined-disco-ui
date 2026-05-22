@@ -55,11 +55,17 @@ function secsToTime(secs) {
 
 // computed
 const songTimeText = computed(() => {
-  if (showRemaining.value && songDuration.value > 0) {
-    const remaining = songDuration.value - songCurrentTime.value;
-    return `-${secsToTime(remaining)} / ${secsToTime(songDuration.value)}`;
+  if (songDuration.value > 0) {
+    if (showRemaining.value) {
+      const remaining = songDuration.value - songCurrentTime.value;
+      return `-${secsToTime(remaining)} / ${secsToTime(songDuration.value)}`;
+    }
+    return `${secsToTime(songCurrentTime.value)} / ${secsToTime(songDuration.value)}`;
   }
-  return `${secsToTime(songCurrentTime.value)} / ${secsToTime(songDuration.value)}`;
+  if (songCurrentTime.value > 0) {
+    return `${secsToTime(songCurrentTime.value)} / -`;
+  }
+  return '- / -';
 });
 
 const currentSong = computed(() => {
@@ -154,6 +160,7 @@ watch(songIndex, async (val) => {
       logger.log(`audioplayer: ${shouldPlay ? 'running' : 'loading'} ${song_id}`);
       playlistStore.saveLastPlayed();
       buffering.value = true;
+      songDuration.value = 0;
 
       const meta = { title: song.title, artist: song.artist ?? '', album: song.album ?? '' };
 
@@ -289,7 +296,7 @@ function skipForward() {
         <Button v-else-if="isPlaying" class="p-item p-play" icon="pi pi-pause" @click="btnPauseClick" severity="primary" rounded text aria-label="pause" />
         <Button v-else class="p-item p-play" :disabled="!playlistStore.hasSongs" icon="pi pi-play" @click="btnPlayClick" severity="secondary" rounded text aria-label="play" />
         <!-- time chip -->
-        <Chip v-if="songDuration > 0" :label="songTimeText" class="p-item p-time" style="cursor:pointer" @click="showRemaining = !showRemaining" />
+        <Chip v-if="currentSong" :label="songTimeText" class="p-item p-time" style="cursor:pointer" @click="showRemaining = !showRemaining" />
         <!-- prev -->
         <Button class="p-item p-prev" :disabled="!playlistStore.hasSongs" icon="pi pi-fast-backward" @click="gotoPrev" severity="secondary" rounded text aria-label="prev" />
         <!-- skip back -->
@@ -301,7 +308,8 @@ function skipForward() {
           <Slider
               v-model="sliderTime"
               :min="0"
-              :max="songDuration"
+              :max="songDuration > 0 ? songDuration : 1"
+              :disabled="songDuration === 0"
               @mousedown="slideStart"
               @mouseup="slideEnd"
               @update:modelValue="slideDrag"
