@@ -1,5 +1,5 @@
 <script setup>
-import { inject, ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { inject, ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import useCollectionStore from '@/stores/collection'
@@ -82,19 +82,21 @@ async function loadSongs() {
 }
 
 // clear queue and restarts playing
-function playFromStart() {
+async function playFromStart() {
     playlistStore.clear();
     playlistStore.enqueue(albumSongs.value);
+    await nextTick(); // let the watcher process songIndex=-1 before setting 0
     playlistStore.isPlaying = true;
     playlistStore.play(0);
     selectedSong.value = playlistStore.songId;
 }
 
 // respond to user input over the playlist
-function selectSong(song) {
+async function selectSong(song) {
     selectedSong.value = song.song_id;
     playlistStore.clear();
     playlistStore.enqueue(albumSongs.value);
+    await nextTick(); // let the watcher process songIndex=-1 before setting the new index
     playlistStore.isPlaying = true;
     const idx = playlistStore.playList.findIndex(x => x.song_id === song.song_id);
     logger.log("album: selected idx:", idx);
