@@ -64,6 +64,12 @@ const useCoversStore = defineStore('covers', () => {
             const buffer = await enqueue(album_id);
             memCache.set(album_id, buffer);
             return buffer;
+        },
+
+        refresh: async function(album_id) {
+            const buffer = await getcover(album_id); // fetch + IDB save, skip queue
+            memCache.set(album_id, buffer);
+            return buffer;
         }
     }
 })

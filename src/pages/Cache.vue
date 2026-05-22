@@ -63,6 +63,19 @@ async function deleteSong(songId) {
     }
 }
 
+async function deleteAll() {
+    loadingStore.start();
+    try {
+        for (const record of allChunks.value) {
+            await idxDB.remove(CACHE_TABLE, record.id);
+        }
+        allChunks.value = [];
+    }
+    finally {
+        loadingStore.stop();
+    }
+}
+
 async function sweepExpired() {
     loadingStore.start();
     try {
@@ -97,6 +110,15 @@ onMounted(loadCache);
                 <div class="flex align-items-center justify-content-between">
                     <span>Cache locale</span>
                     <div class="flex gap-2">
+                        <Button
+                            v-if="songs.length > 0"
+                            label="Elimina tutto"
+                            icon="pi pi-trash"
+                            severity="danger"
+                            size="small"
+                            text
+                            @click="deleteAll"
+                        />
                         <Button
                             label="Sweep scaduti"
                             icon="pi pi-clock"
