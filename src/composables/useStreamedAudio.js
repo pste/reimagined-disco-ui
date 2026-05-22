@@ -183,9 +183,28 @@ export function useStreamedAudio() {
         });
       }
 
+      // backpressure: if more than BUFFER_AHEAD_SECS of audio is already buffered ahead
+      // of the playhead, wait for timeupdate before appending the next chunk.
+      // only active once playback has started (currentTime > 0) — before that, trimBuffer
+      // is a no-op anyway and we rely on pendingPumpError to surface QuotaExceededError.
+      const BUFFER_AHEAD_SECS = 30;
+      async function throttleIfBufferFull() {
+        if (!sourceBuffer || sourceBuffer.buffered.length === 0) { return; }
+        if (audioEl.currentTime <= 0) { return; }
+        while (true) {
+          const ahead = sourceBuffer.buffered.end(sourceBuffer.buffered.length - 1) - audioEl.currentTime;
+          if (ahead <= BUFFER_AHEAD_SECS) { return; }
+          await new Promise((resolve) => {
+            audioEl.addEventListener('timeupdate', resolve, { once: true });
+            signal.addEventListener('abort', resolve, { once: true });
+          });
+          signal.throwIfAborted();
+        }
+      }
+
       // pull chunks from the feeder in order and append to MSE.
       // the streamer never touches the network: the feeder does.
-      // drain after each chunk and trim played data to stay under the MSE quota (~10-12MB).
+      // drain after each chunk, trim played data, then throttle if buffer is full.
       let appended = 0;
       let totalBytes = 0;
       for (let chunkId = 1; chunkId <= MAX_CHUNKS_GUARD; chunkId++) {
@@ -201,6 +220,8 @@ export function useStreamedAudio() {
         await waitForDrain();
         signal.throwIfAborted();
         await trimBuffer();
+        signal.throwIfAborted();
+        await throttleIfBufferFull();
         signal.throwIfAborted();
         appended += 1;
         totalBytes += buf.byteLength;

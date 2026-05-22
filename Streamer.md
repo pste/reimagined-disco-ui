@@ -29,30 +29,32 @@ Two composables handle the work:
 │  getChunk() → blob.arrayBuffer() → enqueueChunk(buf)               │
 │  await waitForDrain()   ←──────────────────────────┐               │
 │  await trimBuffer()                                 │               │
-└───────────────────────────┬─────────────────────────┼───────────────┘
-                            │ queue.push()            │ resolve()
-┌───────────────────────────▼─────────────────────────┴───────────────┐
-│  queue[]  (internal array)                                          │
-│  enqueueChunk() → push + pumpQueue()                                │
-│  pumpQueue()    → shift + appendBuffer()                            │
-│                   (if updating=true: waits for updateend)           │
-└───────────────────────────┬─────────────────────────────────────────┘
-                            │ appendBuffer(ArrayBuffer)
-┌───────────────────────────▼─────────────────────────────────────────┐
-│  SourceBuffer  (browser MSE)                                        │
-│  appendBuffer()  →  updating=true                                   │
-│  [processes data]→  updating=false  →  fires: updateend ───────────┤
-│  remove(start,end) ← trimBuffer()                                   │◄─ AudioPlayer
-│  endOfStream()     ← end of loop                                    │   currentTime
-└───────────────────────────┬─────────────────────────────────────────┘
-                            │ decoded audio stream
-┌───────────────────────────▼─────────────────────────────────────────┐
-│  <audio> element  (browser)                                         │
-│  fires: canplay    → earlyPlay() → music.play()   [AudioPlayer.vue] │
-│  fires: timeupdate → update slider / time display [AudioPlayer.vue] │
-│  fires: ended      → playlistStore.gotoNext()     [AudioPlayer.vue] │
-│  fires: error      → music.stop() + showError()   [AudioPlayer.vue] │
-└─────────────────────────────────────────────────────────────────────┘
+│  await throttleIfBufferFull() ←── timeupdate ───────────────────┐  │
+└───────────────────────────┬─────────────────────────┼────────────┼──┘
+                            │ queue.push()            │ resolve()  │
+┌───────────────────────────▼─────────────────────────┴────────────┼──┐
+│  queue[]  (internal array)                                        │  │
+│  enqueueChunk() → push + pumpQueue()                              │  │
+│  pumpQueue()    → shift + appendBuffer()                          │  │
+│                   (if updating=true: waits for updateend)         │  │
+└───────────────────────────┬───────────────────────────────────────┼──┘
+                            │ appendBuffer(ArrayBuffer)             │
+┌───────────────────────────▼───────────────────────────────────────┼──┐
+│  SourceBuffer  (browser MSE)                                      │  │
+│  appendBuffer()  →  updating=true                                 │  │
+│  [processes data]→  updating=false  →  fires: updateend ──────────┤  │
+│  remove(start,end) ← trimBuffer()                                 │  │
+│  endOfStream()     ← end of loop                                  │  │
+└───────────────────────────┬───────────────────────────────────────┘  │
+                            │ decoded audio stream                      │
+┌───────────────────────────▼───────────────────────────────────────────┐
+│  <audio> element  (browser)                                           │
+│  fires: canplay    → earlyPlay() → music.play()   [AudioPlayer.vue]   │
+│  fires: timeupdate → update slider / time ────────────────────────────┘
+│                    → throttleIfBufferFull() unblocks [AudioPlayer.vue] │
+│  fires: ended      → playlistStore.gotoNext()     [AudioPlayer.vue]   │
+│  fires: error      → music.stop() + showError()   [AudioPlayer.vue]   │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -82,13 +84,34 @@ The `updateend` event is the only signal that unblocks it. Without this wait, th
 
 ### trimBuffer
 
-The MSE buffer has a size limit (historically ~10 MB in Chrome). To stay within quota, `trimBuffer` is called after each chunk is drained. It removes data that has already been played, keeping a 10-second window behind the current playhead:
+`trimBuffer` is called after each chunk is drained. It removes data that has already been played, keeping a 10-second window behind the current playhead:
 
 ```
 remove(buffered.start, currentTime - 10)
 ```
 
-`trimBuffer` is only effective once playback has started and `currentTime` has advanced past ~11 seconds. This is why `AudioPlayer.vue` registers a `canplay` listener — playback starts as soon as the browser has buffered enough data (typically after the first chunk or two), rather than waiting for the entire song to load. Once `currentTime` is moving, `trimBuffer` can continuously free space throughout the load.
+This frees MSE buffer space continuously during playback. It is a no-op when `currentTime < 11s`, so it does not help during the initial loading phase before play has started.
+
+### throttleIfBufferFull
+
+Even with `trimBuffer`, loading from cache can be much faster than playback. Without backpressure, the loop would fill the entire MSE buffer before the audio has played a single second, causing `QuotaExceededError`.
+
+`throttleIfBufferFull` adds that backpressure: after each chunk, it checks how many seconds are buffered **ahead** of the current playhead. If the amount exceeds `BUFFER_AHEAD_SECS` (30 seconds), it suspends the loop and waits for the next `timeupdate` event — meaning it resumes only once the audio has actually consumed some data.
+
+```
+buffered ahead = sourceBuffer.buffered.end() - audioEl.currentTime
+if ahead > 30s  →  wait for timeupdate  →  retry
+```
+
+At 320 kbps, 30 seconds of audio is about 1.2 MB — well within the MSE quota. The loop is also unblocked immediately by the abort signal, so song changes remain instant.
+
+This throttle is only active when `currentTime > 0`. Before playback has started there is nothing to throttle against, so for very large songs loaded while paused the loop still relies on `pendingPumpError` (see below) to surface any quota error cleanly.
+
+### Early Play via `canplay`
+
+`AudioPlayer.vue` registers a `canplay` listener on the `<audio>` element before calling `await streamer.load()`. The browser fires `canplay` as soon as it has buffered enough data to begin playback — typically after the first one or two chunks. At that point `music.play()` is called, `currentTime` starts advancing, and both `trimBuffer` and `throttleIfBufferFull` become effective for the remainder of the load.
+
+Without this, `music.play()` would only be called after `load()` returns (i.e., after all chunks have been processed), meaning `currentTime = 0` throughout the entire loading phase.
 
 ### endOfStream
 
@@ -99,8 +122,9 @@ When the for loop receives an empty or null blob from the feeder, it knows the s
 Every `load()` call creates its own `AbortController`. Calling `stop()` (triggered by song changes or explicit stop) aborts the controller, which:
 
 1. Unblocks any pending `waitForDrain` via `drainReject`
-2. Causes `signal.throwIfAborted()` checkpoints in the loop to throw `AbortError`
-3. Closes the `MediaSource` and revokes the Object URL
+2. Unblocks any pending `throttleIfBufferFull` via the abort event listener
+3. Causes `signal.throwIfAborted()` checkpoints in the loop to throw `AbortError`
+4. Closes the `MediaSource` and revokes the Object URL
 
 The `AbortError` is caught and swallowed silently — it is not an error, just a clean exit.
 
@@ -113,7 +137,22 @@ The `AbortError` is caught and swallowed silently — it is not an error, just a
 | `QuotaExceededError` | `pumpQueue` → `pendingPumpError` → `waitForDrain` | Shows "Buffer audio pieno" |
 | `NotSupportedError` | outer `catch` in `load()` | Shows format error |
 | `InvalidStateError` | outer `catch` in `load()` | Shows player state error |
-| Network / fetch error | `API.getBlob` catch | Shows error toast; returns `undefined` which breaks the chunk loop |
+| Network / fetch error | `API.getBlob` catch | Shows error toast; `undefined` return breaks the chunk loop |
 | `AbortError` | outer `catch` in `load()` | Silent exit (not an error) |
 
-`QuotaExceededError` deserves special attention: `appendBuffer` can throw it **synchronously**, before `waitForDrain` has had a chance to register its `drainReject` callback. `pendingPumpError` bridges this gap — the error is saved on the synchronous throw and re-thrown on the next `waitForDrain` call.
+### pendingPumpError
+
+`QuotaExceededError` deserves special attention: `appendBuffer` can throw it **synchronously**, before `waitForDrain` has had a chance to register its `drainReject` callback. Without a workaround, the error would be caught by `pumpQueue` but have nowhere to go — the chunk would be silently dropped and the audio would truncate without any message.
+
+`pendingPumpError` bridges this gap:
+
+```
+pumpQueue()
+  appendBuffer()  ← throws QuotaExceededError synchronously
+  drainReject is null → save error in pendingPumpError
+
+waitForDrain()  ← called next
+  pendingPumpError is set → reject immediately with the saved error
+
+outer catch → streamErrorMessage → "Buffer audio pieno"
+```
