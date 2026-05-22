@@ -16,7 +16,7 @@ const filter = computed({
         return collectionStore.filter.global;
     },
     set(val) {
-        collectionStore.filter.global = val;
+        collectionStore.filter.global = val.trim();
     }
 })
 
