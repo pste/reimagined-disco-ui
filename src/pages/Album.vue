@@ -169,8 +169,8 @@ onUnmounted(() => {
                                 :options="albumSongs"
                                 optionValue="song_id"
                                 optionLabel="title"
-                                class="w-full h-full listbox-espandibile"
-                                :listStyle="{ maxHeight: 'unsetx' }"
+                                class="w-full h-full listbox-songs"
+                                :listStyle="{ maxHeight: 'unset' }"
                             >
                                 <template #option="slotProps">
                                     <div class="flex items-center w-full" @click="selectSong(slotProps.option)">
@@ -190,15 +190,11 @@ onUnmounted(() => {
 .album-card {
     max-width: 900px;
 }
-.max-h-80 {
-    max-height: 80vh;
-}
-/**/
-.listbox-espandibile-xx :deep(.p-listbox-list-container) {
-  max-height: unset !important;
-  overflow-y: auto; /*hidden !important;*/
-}
-.listbox-espandibile-xx :deep(.p-listbox-list) {
-  height: 100%;
+
+@media (max-width: 767px) {
+    .listbox-songs :deep(.p-listbox-list-container) {
+        max-height: 28vh;
+        overflow-y: auto;
+    }
 }
 </style>

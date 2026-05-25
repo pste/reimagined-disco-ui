@@ -35,7 +35,9 @@ onMounted(async () => {
         <ToolBar />
     </header>
     <template v-if="!session.isVerifying">
-        <RouterView />
+        <div class="page-content w-full flex flex-column align-items-center">
+            <RouterView />
+        </div>
         <AudioPlayer />
     </template>
     <Toast />
@@ -45,6 +47,16 @@ onMounted(async () => {
 <style>
 body {
     background-color: var(--p-slate-600);
+}
+
+.page-content {
+    padding-bottom: 6rem;
+}
+
+@media (max-width: 767px) {
+    .page-content {
+        padding-bottom: 11rem;
+    }
 }
 /*
 footera {
