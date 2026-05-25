@@ -11,6 +11,14 @@ const collectionStore = useCollectionStore();
 function gotoArtistAlbum(album_id) {
     router.push({ name: 'album', params: { albumid: album_id }});
 }
+
+function scrollToTop() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function scrollToBottom() {
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+}
 </script>
 
 <template>
@@ -26,9 +34,32 @@ function gotoArtistAlbum(album_id) {
             </MiniDisc>
         </template>
     </div>
+
+    <Button class="scroll-btn scroll-btn-top" icon="pi pi-angle-up" rounded text severity="secondary" size="small" @click="scrollToTop" aria-label="Vai in cima" />
+    <Button class="scroll-btn scroll-btn-bottom" icon="pi pi-angle-down" rounded text severity="secondary" size="small" @click="scrollToBottom" aria-label="Vai in fondo" />
 </template>
 
 <style scoped>
+.scroll-btn {
+    position: fixed;
+    right: 1rem;
+    z-index: 100;
+}
+
+.scroll-btn-top {
+    top: 4rem;
+}
+
+.scroll-btn-bottom {
+    bottom: 5rem;
+}
+
+@media (max-width: 767px) {
+    .scroll-btn-bottom {
+        bottom: 10rem;
+    }
+}
+
 .collection-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
