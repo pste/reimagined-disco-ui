@@ -5,10 +5,12 @@ A modern web application for storing and streaming music. Built with Vue 3, this
 ## Features
 
 - **Music Collection Browser** - Browse albums and songs in your collection with a stylish MiniDisc-inspired UI
-- **Audio Streaming** - Stream music with full playback controls (play, pause, next, previous)
+- **Audio Streaming** - Stream music with full playback controls (play, pause, next, previous, skip ±15s)
 - **Playlist Management** - Create and manage playlists with enqueue functionality
-- **Time Seeking** - Seek within songs using an interactive progress slider
+- **Time Seeking** - Seek within songs using an interactive progress slider; elapsed/remaining time toggle
 - **Volume Control** - Adjustable volume with mute toggle
+- **Album Metadata Editor** - View and edit ID3 tags (title, artist, year, genre, track/disc numbers) with one-click disc propagation and auto track numbering; saves back to files via API
+- **Local Audio Cache** - IndexedDB chunk cache with TTL management; cache page shows size per album with per-song and full delete; chunks prefetched in background on album open
 - **User Authentication** - Secure login system with session management
 - **User Preferences** - Personalizable settings including collection sorting options
 - **Error Handling** - Toast notifications for errors and session management
@@ -57,9 +59,10 @@ Required secrets/vars: `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`, `K8S_REPO_TOKEN`
 ```
 src/
 ├── components/      # Reusable Vue components (AudioPlayer, MiniDisc, ToolBar)
-├── pages/          # Page components (Album, Collection, Login, Parameters)
-├── plugins/        # Vue plugins (API, router, pinia, logger, toast)
-├── stores/         # Pinia stores for state management
+├── pages/          # Page components (Album, AlbumEdit, Cache, Collection, Login, Parameters)
+├── plugins/        # Vue plugins (API, router, idxDB, logger, toast)
+├── stores/         # Pinia stores (collection, covers, playlist, session, ...)
+├── composables/    # Shared logic (useCacheFeeder, useStreamedAudio)
 ├── assets/         # Static assets
 └── main.js         # Application entry point
 ```
