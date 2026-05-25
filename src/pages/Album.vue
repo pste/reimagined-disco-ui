@@ -170,7 +170,7 @@ onUnmounted(() => {
                                 optionValue="song_id"
                                 optionLabel="title"
                                 class="w-full h-full listbox-songs"
-                                :listStyle="{ maxHeight: 'unset' }"
+                                :listStyle="{ overflowY: 'auto' }"
                             >
                                 <template #option="slotProps">
                                     <div class="flex items-center w-full" @click="selectSong(slotProps.option)">
@@ -191,10 +191,14 @@ onUnmounted(() => {
     max-width: 900px;
 }
 
+.listbox-songs :deep(.p-listbox-list-container) {
+    max-height: 320px;
+    overflow-y: auto;
+}
+
 @media (max-width: 767px) {
     .listbox-songs :deep(.p-listbox-list-container) {
-        max-height: 28vh;
-        overflow-y: auto;
+        max-height: 13vh;
     }
 }
 </style>
