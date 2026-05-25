@@ -126,6 +126,10 @@ onMounted(() => {
   audioElement.value.addEventListener('waiting', () => { buffering.value = true; });
   audioElement.value.addEventListener('playing', () => { buffering.value = false; });
 
+  // sync isPlaying with the real audio element state (handles phone calls, system interruptions)
+  audioElement.value.addEventListener('play',  () => { isPlaying.value = true;  });
+  audioElement.value.addEventListener('pause', () => { isPlaying.value = false; });
+
   audioElement.value.addEventListener('timeupdate', function() {
     const val = audioElement.value.currentTime || 0;
     songCurrentTime.value = val;
