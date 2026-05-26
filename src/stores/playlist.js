@@ -17,23 +17,13 @@ const usePlaylistStore = defineStore('playlist', () => {
         return (playList.value.length > 0);
     })
 
-    const songId = computed(() => {
-        if (playList.value.length > 0 && songIndex.value >= 0) {
-            return playList.value[songIndex.value].song_id;
-        }
-        else {
-            return 0;
-        }
-    });
+    const currentSong = computed(() =>
+        songIndex.value >= 0 ? (playList.value[songIndex.value] ?? null) : null
+    );
 
-    const albumId = computed(() => {
-        if (playList.value.length > 0 && songIndex.value >= 0) {
-            return playList.value[songIndex.value].album_id;
-        }
-        else {
-            return 0;
-        }
-    })
+    const songId = computed(() => currentSong.value?.song_id ?? 0);
+
+    const albumId = computed(() => currentSong.value?.album_id ?? 0);
 
     const isIdle = computed(() => {
         return songIndex.value === -1;
@@ -62,13 +52,9 @@ const usePlaylistStore = defineStore('playlist', () => {
         catch (_) {}
     }
 
-    function enqueue( song ) { // song: {song_id, title, album, artist}
-        if (song.song_id) { // single song
-            playList.value.push(song);
-        }
-        else { // album
-            playList.value = playList.value.concat(song);
-        }
+    function enqueue(songs) {
+        const list = Array.isArray(songs) ? songs : [songs];
+        playList.value.push(...list);
     }
 
     function inRange(idx) {
@@ -110,6 +96,7 @@ const usePlaylistStore = defineStore('playlist', () => {
 
         // getters
         hasSongs,
+        currentSong,
         songId,
         albumId,
         isIdle,

@@ -24,7 +24,7 @@ let coverObjectURL = null;
 
 // refs
 const audioElement = useTemplateRef('audioElement');
-const { songIndex, isPlaying, currentSongDuration: songDuration } = storeToRefs(playlistStore);
+const { songIndex, isPlaying, currentSongDuration: songDuration, currentSong } = storeToRefs(playlistStore);
 const volumeValue = ref(100); // volume slider/ 
 const muted = ref(false); // mute button
 const songCurrentTime = ref(0); // song time from audioelement updates
@@ -65,11 +65,6 @@ const songTimeText = computed(() => {
     return `${secsToTime(songCurrentTime.value)} / -`;
   }
   return '- / -';
-});
-
-const currentSong = computed(() => {
-  const idx = songIndex.value;
-  return (idx >= 0) ? (playlistStore.playList[idx] ?? null) : null;
 });
 
 // audioelement player utils
