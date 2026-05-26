@@ -14,7 +14,7 @@ const useMenuStore = defineStore('menus', () => {
     // reset snack on close:
     watch(infoSnackBar, (val) => {
         if (val === false) {
-            infoSnackBarMsg = '';
+            infoSnackBarMsg.value = '';
         }
     })
 
