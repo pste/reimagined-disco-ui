@@ -97,6 +97,7 @@ onMounted(() => {
   streamer.sweep();
 
   audioElement.value.onended = (event) => {
+      isPlaying.value = true; // ended != stopped: user intent remains "play" (es: gotoNext)
       playlistStore.gotoNext();
   }
 
@@ -146,6 +147,7 @@ watch(songIndex, async (val) => {
       URL.revokeObjectURL(coverObjectURL);
       coverObjectURL = null;
     }
+    // got another song to play
     if (val !== -1) {
       const shouldPlay = isPlaying.value;
       const song = playlistStore.playList[val];
