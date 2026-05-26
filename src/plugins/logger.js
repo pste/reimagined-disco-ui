@@ -1,15 +1,7 @@
-const debugLog = console.log;
+const isDebug = window.location.href.indexOf("http://localhost.") === 0;
 
-export default  {
-    log: function() {
-        const href = window.location.href;
-        const isDebug = href.indexOf("http://localhost.") === 0;
-        if (isDebug) {
-            console.log.apply(console, arguments);
-        }
-        //var args = Array.from(arguments); // OR you can use: Array.prototype.slice.call( arguments );
-        // console.log.apply(console, args);
-    },
+export default {
+    log: (...args) => { if (isDebug) { console.log(...args); } },
     info: console.log,
     error: console.error,
 }
