@@ -9,7 +9,7 @@ A modern web application for storing and streaming music. Built with Vue 3, this
 - **Playlist Management** - Create and manage playlists with enqueue functionality
 - **Time Seeking** - Seek within songs using an interactive progress slider; elapsed/remaining time toggle
 - **Volume Control** - Adjustable volume with mute toggle
-- **Album Metadata Editor** - View and edit ID3 tags (title, artist, year, genre, track/disc numbers) with one-click disc propagation and auto track numbering; saves back to files via API
+- **Album Metadata Editor** - View and edit ID3 tags (title, artist, year, genre, track/disc numbers) with one-click disc propagation and auto track numbering; edits are queued as async jobs and written back to files by the jobs pod
 - **Local Audio Cache** - IndexedDB chunk cache with TTL management; cache page shows size per album with per-song and full delete; chunks prefetched in background on album open
 - **User Authentication** - Secure login system with session management
 - **User Preferences** - Personalizable settings including collection sorting options
@@ -59,7 +59,7 @@ Required secrets/vars: `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`, `K8S_REPO_TOKEN`
 ```
 src/
 ├── components/      # Reusable Vue components (AudioPlayer, MiniDisc, ToolBar)
-├── pages/          # Page components (Album, AlbumEdit, Cache, Collection, Login, Parameters)
+├── pages/          # Page components (Album, AlbumEdit, Cache, Collection, Jobs, Login, Parameters)
 ├── plugins/        # Vue plugins (API, router, idxDB, logger, toast)
 ├── stores/         # Pinia stores (collection, covers, playlist, session, ...)
 ├── composables/    # Shared logic (useCacheFeeder, useStreamedAudio)
