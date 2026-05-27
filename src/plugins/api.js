@@ -78,6 +78,12 @@ function createAPI() {
                 return res.json();
             });
         },
+
+        delete: async (url) => {
+            return handleRequest(url, async () => {
+                await makeRequest("DELETE", {}, url);
+            });
+        },
     }
 }
 

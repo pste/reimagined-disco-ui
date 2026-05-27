@@ -37,6 +37,11 @@ async function addJob() {
     await load();
 }
 
+async function deleteJob(job_id) {
+    await API.delete(`/jobs/${job_id}`);
+    await load();
+}
+
 onMounted(load);
 </script>
 
@@ -102,6 +107,19 @@ onMounted(load);
                     <Column header="Risultato">
                         <template #body="{ data }">
                             <span class="text-sm text-color-secondary">{{ data.result || '—' }}</span>
+                        </template>
+                    </Column>
+
+                    <Column style="width: 3rem">
+                        <template #body="{ data }">
+                            <Button
+                                icon="pi pi-trash"
+                                severity="danger"
+                                size="small"
+                                text
+                                rounded
+                                @click="deleteJob(data.job_id)"
+                            />
                         </template>
                     </Column>
 
