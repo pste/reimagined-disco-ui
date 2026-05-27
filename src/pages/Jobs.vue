@@ -4,6 +4,9 @@ import { inject, ref, onMounted } from 'vue'
 const API = inject('API');
 const jobs = ref([]);
 
+const JOB_TYPES = ['filescan', 'fullscan'];
+const newJob = ref({ name: null, when: new Date() });
+
 function statusSeverity(status) {
     const map = { pending: 'warn', running: 'info', done: 'success', error: 'danger' };
     return map[status] || 'secondary';
@@ -28,6 +31,12 @@ async function load() {
     jobs.value = await API.get('/jobs') ?? [];
 }
 
+async function addJob() {
+    await API.post('/jobs', { name: newJob.value.name, when: newJob.value.when });
+    newJob.value = { name: null, when: new Date() };
+    await load();
+}
+
 onMounted(load);
 </script>
 
@@ -41,6 +50,30 @@ onMounted(load);
                 </div>
             </template>
             <template #content>
+
+                <!-- New job form -->
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <Select
+                        v-model="newJob.name"
+                        :options="JOB_TYPES"
+                        placeholder="Tipo job"
+                    />
+                    <DatePicker
+                        v-model="newJob.when"
+                        showTime
+                        hourFormat="24"
+                        showSeconds
+                        placeholder="Data e ora"
+                    />
+                    <Button
+                        label="Add"
+                        icon="pi pi-plus"
+                        :disabled="!newJob.name || !newJob.when"
+                        @click="addJob"
+                    />
+                </div>
+
+                <!-- Job list -->
                 <div v-if="!jobs.length" class="text-center text-color-secondary py-4">
                     Nessun job trovato.
                 </div>
