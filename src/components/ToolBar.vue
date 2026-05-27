@@ -55,7 +55,7 @@ const menuItems = ref([
                 }
             },
             {
-                label: 'Refresh',
+                label: 'Reload',
                 icon: 'pi pi-refresh',
                 command: async() => {
                     await collectionStore.load();
