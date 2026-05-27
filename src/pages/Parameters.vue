@@ -24,76 +24,108 @@ function onCellEditComplete(event) {
 
 async function savePassword() {
     if (pwd1.value !== pwd2.value) {
-        // ERROR
         errorsStore.showError("Password does not match!");
     }
     else {
-        await API.post('/user/password', { value: pwd1.value})
+        await API.post('/user/password', { value: pwd1.value });
     }
 }
 
 // init page
 onMounted(async () => {
-  await loadSources();
+    await loadSources();
 })
 </script>
 
 <template>
-    <div class="flex flex-column row-gap-2">
-        <DataTable 
-                    :value="sources" 
+    <div class="flex flex-column align-items-center pt-8 pb-6 gap-4 w-11 md:w-10 lg:w-8 xl:w-7">
+
+        <!-- Sorgenti musicali -->
+        <Card class="w-full">
+            <template #title>
+                <div class="flex align-items-center justify-content-between">
+                    <span>Sorgenti musicali</span>
+                    <div class="flex gap-2">
+                        <Button
+                            icon="pi pi-plus"
+                            severity="secondary"
+                            size="small"
+                            text
+                        />
+                        <Button
+                            icon="pi pi-refresh"
+                            severity="secondary"
+                            size="small"
+                            text
+                            @click="loadSources"
+                        />
+                    </div>
+                </div>
+            </template>
+
+            <template #content>
+                <div v-if="sources.length === 0" class="text-center text-color-secondary py-4">
+                    Nessuna sorgente configurata.
+                </div>
+
+                <DataTable
+                    v-else
+                    :value="sources"
                     dataKey="source_id"
-                    stripedRows 
-                    editMode="cell" 
+                    size="small"
+                    striped-rows
+                    editMode="cell"
                     @cell-edit-complete="onCellEditComplete"
-        >
-            <!-- 1st column: add/rm buttons -->
-            <Column headerStyle="width: 50px">
-                <template #header>
-                    <Button icon="pi pi-plus-circle" severity="secondary" />
-                </template>
-                <template #body>
-                    <Button icon="pi pi-minus-circle" severity="secondary" />
-                </template>
-            </Column>
-            <!-- other columns (with data) -->
-            <Column header="Path" field="path" bodyClass="long-text-col" >
-                <template #editor="{ data, field }">
-                    <template>
-                        <InputText v-model="aaa" autofocus fluid :placeholder="data" />
-                    </template>
-                </template>
-            </Column>
-        </DataTable>
+                >
+                    <Column headerStyle="width: 50px">
+                        <template #body>
+                            <Button icon="pi pi-minus-circle" severity="danger" size="small" text rounded />
+                        </template>
+                    </Column>
 
-        <!-- PASSWORD CHANGE -->
-        <InputGroup>
-            <InputGroupAddon>
-                <i class="pi pi-lock"></i>
-            </InputGroupAddon>
-            
-            <IftaLabel>
-                <InputText id="txtpwd1"  v-model="pwd1"  name="password1" type="password" />
-                <label for="password1">Password</label>
-            </IftaLabel>
+                    <Column header="Path" field="path">
+                        <template #editor="{ data, field }">
+                            <InputText v-model="aaa" autofocus fluid :placeholder="data[field]" />
+                        </template>
+                    </Column>
+                </DataTable>
+            </template>
+        </Card>
 
-            <IftaLabel>
-                <InputText id="txtpwd2"  v-model="pwd2"  name="password2" type="password" />
-                <label for="password2">Repeat Password</label>
-            </IftaLabel>
+        <!-- Cambio password -->
+        <Card class="w-full">
+            <template #title>
+                <span>Cambio password</span>
+            </template>
 
-            <Button @click="savePassword">Save</Button>
-        </InputGroup>
-        
+            <template #content>
+                <div class="flex flex-column gap-3">
+                    <InputGroup>
+                        <InputGroupAddon>
+                            <i class="pi pi-lock"></i>
+                        </InputGroupAddon>
+                        <IftaLabel>
+                            <InputText id="txtpwd1" v-model="pwd1" name="password1" type="password" />
+                            <label for="txtpwd1">Nuova password</label>
+                        </IftaLabel>
+                    </InputGroup>
+
+                    <InputGroup>
+                        <InputGroupAddon>
+                            <i class="pi pi-lock"></i>
+                        </InputGroupAddon>
+                        <IftaLabel>
+                            <InputText id="txtpwd2" v-model="pwd2" name="password2" type="password" />
+                            <label for="txtpwd2">Conferma password</label>
+                        </IftaLabel>
+                    </InputGroup>
+
+                    <div class="flex justify-content-end">
+                        <Button label="Salva" icon="pi pi-check" @click="savePassword" />
+                    </div>
+                </div>
+            </template>
+        </Card>
+
     </div>
 </template>
-
-<style scoped>
-:deep(.p-datatable-table-container) {
-    border-radius: var(--p-menubar-border-radius);
-    min-width: 50rem;
-}
-:deep(.long-text-col) {
-    word-break:break-all;
-}
-</style>

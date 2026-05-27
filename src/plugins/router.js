@@ -7,6 +7,7 @@ import AlbumView from '../pages/Album.vue'
 import ParametersView from '../pages/Parameters.vue'
 import CacheView from '../pages/Cache.vue'
 import AlbumEditView from '../pages/AlbumEdit.vue'
+import JobsView from '../pages/Jobs.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -44,6 +45,12 @@ const router = createRouter({
         path: '/album/:albumid/edit',
         name: 'album-edit',
         component: AlbumEditView,
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/jobs',
+        name: 'jobs',
+        component: JobsView,
         meta: { requiresAuth: true }
     },
     

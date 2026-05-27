@@ -48,6 +48,13 @@ const menuItems = ref([
                 }
             },
             {
+                label: 'Jobs',
+                icon: 'pi pi-list-check',
+                command: () => {
+                    router.push({ name: 'jobs' });
+                }
+            },
+            {
                 label: 'Refresh',
                 icon: 'pi pi-refresh',
                 command: async() => {
