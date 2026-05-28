@@ -1,8 +1,8 @@
 import { inject } from 'vue'
 import logger from '@/plugins/logger'
+import useParametersStore from '@/stores/parameters'
 
 const CACHE_TABLE = 'chunks';
-const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 gg
 const MAX_CHUNKS_GUARD = 500;
 const AUDIO_MIME = 'audio/mpeg';
 
@@ -22,6 +22,7 @@ function base64ToBlob(b64) {
 export function useCacheFeeder() {
     const API = inject('API');
     const idxDB = inject('idxDB');
+    const parametersStore = useParametersStore();
 
     // build the key for a song's chunk
     function cacheKey(songId, chunkId) {
@@ -50,7 +51,9 @@ export function useCacheFeeder() {
                 const size = blob?.size ?? 0;
                 logger.log(`cacheFeeder: fetched song=${songId} chunk=${chunkId} size=${size}`);
                 if (blob && size > 0) {
-                    const record = { blob, songId, chunkId, expiresAt: Date.now() + CACHE_TTL_MS, ttlMs: CACHE_TTL_MS };
+                    await parametersStore.load();
+                    const ttlMs = parametersStore.cacheTTLDays * 24 * 60 * 60 * 1000;
+                    const record = { blob, songId, chunkId, expiresAt: Date.now() + ttlMs, ttlMs };
                     if (meta) { record.meta = meta; }
                     if (songMeta) { record.songMeta = songMeta; }
                     await idxDB.put(CACHE_TABLE, key, record);

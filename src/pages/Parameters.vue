@@ -1,28 +1,24 @@
 <script setup>
 import { inject, ref, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import logger from '@/plugins/logger'
 import useErrorsStore from '@/stores/errors'
+import useParametersStore from '@/stores/parameters'
 
 const API = inject('API');
 const errorsStore = useErrorsStore();
+const parametersStore = useParametersStore();
+const { cronRequeue, cacheTTLDays } = storeToRefs(parametersStore);
 
 // data
 const sources = ref([]);
 const aaa = ref('ciao');
 const pwd1 = ref('');
 const pwd2 = ref('');
-const cronRequeue = ref('');
 
 // methods
 async function loadSources() {
     sources.value = await API.get('/sources'); // { source_id, path }
-}
-
-async function loadParameters() {
-    const data = await API.get('/parameters');
-    if (data?.length > 0) {
-        cronRequeue.value = data[0].cronRequeue ?? '';
-    }
 }
 
 function onCellEditComplete(event) {
@@ -39,14 +35,10 @@ async function savePassword() {
     }
 }
 
-async function saveParameters() {
-    await API.post('/parameters', { cronRequeue: cronRequeue.value });
-}
-
 // init page
 onMounted(async () => {
     await loadSources();
-    await loadParameters();
+    await parametersStore.load();
 })
 </script>
 
@@ -118,8 +110,13 @@ onMounted(async () => {
                         <label for="txtCronRequeue">Cron riaccodamento scan (es. 0 2 * * *)</label>
                     </IftaLabel>
 
+                    <IftaLabel>
+                        <InputNumber id="numCacheTTL" v-model="cacheTTLDays" :min="1" :max="365" fluid />
+                        <label for="numCacheTTL">Durata cache (giorni)</label>
+                    </IftaLabel>
+
                     <div class="flex justify-content-end">
-                        <Button label="Salva" icon="pi pi-check" @click="saveParameters" />
+                        <Button label="Salva" icon="pi pi-check" @click="parametersStore.save()" />
                     </div>
                 </div>
             </template>
