@@ -11,10 +11,18 @@ const sources = ref([]);
 const aaa = ref('ciao');
 const pwd1 = ref('');
 const pwd2 = ref('');
+const cronRequeue = ref('');
 
 // methods
 async function loadSources() {
     sources.value = await API.get('/sources'); // { source_id, path }
+}
+
+async function loadParameters() {
+    const data = await API.get('/parameters');
+    if (data?.length > 0) {
+        cronRequeue.value = data[0].cronRequeue ?? '';
+    }
 }
 
 function onCellEditComplete(event) {
@@ -31,9 +39,14 @@ async function savePassword() {
     }
 }
 
+async function saveParameters() {
+    await API.post('/parameters', { cronRequeue: cronRequeue.value });
+}
+
 // init page
 onMounted(async () => {
     await loadSources();
+    await loadParameters();
 })
 </script>
 
@@ -89,6 +102,26 @@ onMounted(async () => {
                         </template>
                     </Column>
                 </DataTable>
+            </template>
+        </Card>
+
+        <!-- Pianificazione scan -->
+        <Card class="w-full">
+            <template #title>
+                <span>Pianificazione scan</span>
+            </template>
+
+            <template #content>
+                <div class="flex flex-column gap-3">
+                    <IftaLabel>
+                        <InputText id="txtCronRequeue" v-model="cronRequeue" fluid />
+                        <label for="txtCronRequeue">Cron riaccodamento scan (es. 0 2 * * *)</label>
+                    </IftaLabel>
+
+                    <div class="flex justify-content-end">
+                        <Button label="Salva" icon="pi pi-check" @click="saveParameters" />
+                    </div>
+                </div>
             </template>
         </Card>
 

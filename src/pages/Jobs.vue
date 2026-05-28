@@ -5,7 +5,16 @@ const API = inject('API');
 const jobs = ref([]);
 
 const JOB_TYPES = ['filescan', 'fullscan'];
-const newJob = ref({ name: null, when: new Date() });
+
+function nextTenMinutes() {
+    const d = new Date();
+    d.setSeconds(0);
+    d.setMilliseconds(0);
+    d.setMinutes(Math.ceil((d.getMinutes() + 1) / 10) * 10);
+    return d;
+}
+
+const newJob = ref({ name: null, when: nextTenMinutes() });
 
 function statusSeverity(status) {
     const map = { pending: 'warn', running: 'info', done: 'success', error: 'danger' };
@@ -33,7 +42,7 @@ async function load() {
 
 async function addJob() {
     await API.post('/jobs', { name: newJob.value.name, when: newJob.value.when });
-    newJob.value = { name: null, when: new Date() };
+    newJob.value = { name: null, when: nextTenMinutes() };
     await load();
 }
 
@@ -67,7 +76,6 @@ onMounted(load);
                         v-model="newJob.when"
                         showTime
                         hourFormat="24"
-                        showSeconds
                         placeholder="Data e ora"
                     />
                     <Button
@@ -92,7 +100,7 @@ onMounted(load);
 
                     <Column field="name" header="Job" />
 
-                    <Column header="Creato">
+                    <Column header="When">
                         <template #body="{ data }">{{ formatDate(data.when) }}</template>
                     </Column>
 
