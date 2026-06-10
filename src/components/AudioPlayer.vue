@@ -103,8 +103,10 @@ onMounted(() => {
     navigator.mediaSession.setActionHandler('previoustrack', () => playlistStore.gotoPrev());
   }
 
+  // resume only if user intent is "play" (isPlaying): a pause from the Android
+  // notification must not be overridden when the app comes back to foreground
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && !playlistStore.isIdle && audioElement.value.paused) {
+    if (!document.hidden && isPlaying.value && audioElement.value.paused) {
       music.play();
     }
   });
@@ -123,8 +125,15 @@ onMounted(() => {
   audioElement.value.addEventListener('playing', () => { buffering.value = false; });
 
   // sync isPlaying with the real audio element state (handles phone calls, system interruptions)
-  audioElement.value.addEventListener('play',  () => { isPlaying.value = true;  });
-  audioElement.value.addEventListener('pause', () => { isPlaying.value = false; });
+  // and keep the media session playbackState aligned (Android notification play/pause icon)
+  audioElement.value.addEventListener('play',  () => {
+    isPlaying.value = true;
+    if ('mediaSession' in navigator) { navigator.mediaSession.playbackState = 'playing'; }
+  });
+  audioElement.value.addEventListener('pause', () => {
+    isPlaying.value = false;
+    if ('mediaSession' in navigator) { navigator.mediaSession.playbackState = 'paused'; }
+  });
 
   audioElement.value.addEventListener('timeupdate', function() {
     const val = audioElement.value.currentTime || 0;
@@ -133,8 +142,46 @@ onMounted(() => {
     if (manualSeek.value === false) {
       sliderTime.value = val;
     }
+    // progress bar in the Android notification
+    if ('mediaSession' in navigator && songDuration.value > 0) {
+      try {
+        navigator.mediaSession.setPositionState({
+          duration: songDuration.value,
+          position: Math.min(val, songDuration.value), // position > duration throws
+          playbackRate: audioElement.value.playbackRate,
+        });
+      }
+      catch (_) { /* ignore */ }
+    }
   })
 })
+
+// media session metadata (Android notification): set text right away, then
+// add the artwork when the cover arrives (coversStore.get may hit the network)
+async function updateMediaSession(song, val) {
+  if (!('mediaSession' in navigator)) { return; }
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: song.title,
+    artist: song.artist,
+    album: song.album,
+  });
+  let blob = null;
+  try {
+    blob = await coversStore.get(song.album_id);
+  }
+  catch (err) {
+    logger.log('audioplayer: cover for media session failed', err);
+  }
+  // bail if songIndex changed while fetching the cover (user skipped song)
+  if (songIndex.value !== val || !blob) { return; }
+  coverObjectURL = URL.createObjectURL(blob);
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: song.title,
+    artist: song.artist,
+    album: song.album,
+    artwork: [{ src: coverObjectURL, type: blob.type }],
+  });
+}
 
 // watch
 watch(songIndex, async (val) => {
@@ -154,6 +201,10 @@ watch(songIndex, async (val) => {
       songDuration.value = 0;
 
       const meta = { title: song.title, artist: song.artist ?? '', album: song.album ?? '' };
+
+      // fire-and-forget: streamer.load below resolves near the END of the song
+      // (backpressure keeps ~30s buffered ahead), so the notification must not wait for it
+      updateMediaSession(song, val);
 
       API.post('/stream/song', { song_id });
       // start playing as soon as the browser has enough data buffered (before full load)
@@ -178,21 +229,6 @@ watch(songIndex, async (val) => {
           });
         }
       }
-
-      if ('mediaSession' in navigator) {
-        const artwork = [];
-        const blob = await coversStore.get(song.album_id);
-        if (blob) {
-          coverObjectURL = URL.createObjectURL(blob);
-          artwork.push({ src: coverObjectURL, type: blob.type });
-        }
-        navigator.mediaSession.metadata = new MediaMetadata({
-          title: song.title,
-          artist: song.artist,
-          album: song.album,
-          artwork,
-        });
-      }
     }
     else { // no more songs
       buffering.value = false;
@@ -202,6 +238,7 @@ watch(songIndex, async (val) => {
       songCurrentTime.value = 0;
       if ('mediaSession' in navigator) {
         navigator.mediaSession.metadata = null;
+        navigator.mediaSession.playbackState = 'none';
       }
     }
 })
