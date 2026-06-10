@@ -1,7 +1,6 @@
 <script setup>
 import { inject, ref, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
-import logger from '@/plugins/logger'
 import useErrorsStore from '@/stores/errors'
 import useParametersStore from '@/stores/parameters'
 
@@ -12,18 +11,12 @@ const { cronRequeue, cacheTTLDays } = storeToRefs(parametersStore);
 
 // data
 const sources = ref([]);
-const aaa = ref('ciao');
 const pwd1 = ref('');
 const pwd2 = ref('');
 
 // methods
 async function loadSources() {
     sources.value = await API.get('/sources'); // { source_id, path }
-}
-
-function onCellEditComplete(event) {
-    let { data, newValue, field } = event;
-    logger.log(`onCellEditComplete NOOP ${field}`);
 }
 
 async function savePassword() {
@@ -50,21 +43,13 @@ onMounted(async () => {
             <template #title>
                 <div class="flex align-items-center justify-content-between">
                     <span>Sorgenti musicali</span>
-                    <div class="flex gap-2">
-                        <Button
-                            icon="pi pi-plus"
-                            severity="secondary"
-                            size="small"
-                            text
-                        />
-                        <Button
-                            icon="pi pi-refresh"
-                            severity="secondary"
-                            size="small"
-                            text
-                            @click="loadSources"
-                        />
-                    </div>
+                    <Button
+                        icon="pi pi-refresh"
+                        severity="secondary"
+                        size="small"
+                        text
+                        @click="loadSources"
+                    />
                 </div>
             </template>
 
@@ -79,20 +64,8 @@ onMounted(async () => {
                     dataKey="source_id"
                     size="small"
                     striped-rows
-                    editMode="cell"
-                    @cell-edit-complete="onCellEditComplete"
                 >
-                    <Column headerStyle="width: 50px">
-                        <template #body>
-                            <Button icon="pi pi-minus-circle" severity="danger" size="small" text rounded />
-                        </template>
-                    </Column>
-
-                    <Column header="Path" field="path">
-                        <template #editor="{ data, field }">
-                            <InputText v-model="aaa" autofocus fluid :placeholder="data[field]" />
-                        </template>
-                    </Column>
+                    <Column header="Path" field="path" />
                 </DataTable>
             </template>
         </Card>

@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import useCollectionStore from '@/stores/collection'
 import useCoversStore from '@/stores/covers'
 import useLoadingStore from '@/stores/loading'
+import CoverPicker from '@/components/CoverPicker.vue'
 
 const route = useRoute();
 const router = useRouter();
@@ -19,10 +20,16 @@ const albumMeta = ref({ albumTitle: '', artist: '', year: '', genre: '' });
 const image = ref(null);
 const editing = ref(false);
 const saving = ref(false);
+const coverPickerVisible = ref(false);
 
+// editor e Collection leggono entrambi dal DB (write-through al save):
+// i metadati album arrivano dal collection store, le tracce da /search/songs (col bitrate)
 async function load() {
     loadingStore.start();
     try {
+        // deep-link/refresh: la collection potrebbe non essere ancora caricata (App la carica async)
+        if (!album.value) { await collectionStore.load(); }
+
         const songs = await API.get('/search/songs', { albumid: route.params.albumid });
         if (!songs?.length) { return; }
 
@@ -31,24 +38,20 @@ async function load() {
             return a.track_nr - b.track_nr;
         });
 
-        const id3List = await Promise.all(songs.map(s => API.get('/song/id3', { id: s.song_id })));
-
-        const first = id3List[0] ?? {};
         albumMeta.value = {
-            albumTitle: first.album  ?? '',
-            artist:     first.artist ?? '',
-            year:       first.year   ?? '',
-            genre:      Array.isArray(first.genre) ? first.genre.join(', ') : (first.genre ?? ''),
+            albumTitle: album.value?.title ?? '',
+            artist:     album.value?.name  ?? '',
+            year:       album.value?.year  ?? '',
+            genre:      album.value?.genre ?? '',
         };
 
-        tracks.value = songs.map((s, i) => {
-            const id3 = id3List[i] ?? {};
+        tracks.value = songs.map((s) => {
             return {
                 songId:  s.song_id,
-                title:   id3.title     ?? '',
-                trackNo: id3.track?.no ?? null,
-                discNo:  id3.disk?.no  ?? null,
-                bitrate: id3.bitrate   ?? null,
+                title:   s.title    ?? '',
+                trackNo: s.track_nr ?? null,
+                discNo:  s.disc_nr  ?? null,
+                bitrate: s.bitrate  ?? null,
             };
         });
 
@@ -63,33 +66,44 @@ async function load() {
 async function save() {
     saving.value = true;
     try {
-        for (const track of tracks.value) {
-            const body = {
-                title:  track.title                || null,
-                album:  albumMeta.value.albumTitle || null,
-                artist: albumMeta.value.artist     || null,
-                year:   albumMeta.value.year       || null,
-                genre:  albumMeta.value.genre      || null,
-                track:  track.trackNo != null ? { no: track.trackNo } : null,
-                disk:   track.discNo  != null ? { no: track.discNo  } : null,
-            };
-            await API.post('/song/id3', body, { id: track.songId });
-        }
+        const body = {
+            album_id: route.params.albumid,
+            album:    albumMeta.value.albumTitle || null,
+            artist:   albumMeta.value.artist     || null,
+            year:     albumMeta.value.year       || null,
+            genre:    albumMeta.value.genre      || null,
+            tracks: tracks.value.map((track) => ({
+                song_id:  track.songId,
+                title:    track.title   || null,
+                track_nr: track.trackNo ?? null,
+                disc_nr:  track.discNo  ?? null,
+            })),
+        };
+        const res = await API.post('/album/id3', body);
+        if (!res?.ok) { return; } // errore già mostrato dal client API
         collectionStore.updateAlbum(route.params.albumid, {
             title: albumMeta.value.albumTitle,
             name:  albumMeta.value.artist,
             year:  albumMeta.value.year,
+            genre: albumMeta.value.genre,
         });
-        const blob = await coversStore.refresh(route.params.albumid);
-        if (blob) {
-            if (image.value) { URL.revokeObjectURL(image.value); }
-            image.value = URL.createObjectURL(blob);
+        // il rename può far atterrare le tracce su un altro album row
+        if (res.album_id && String(res.album_id) !== String(route.params.albumid)) {
+            await collectionStore.load();
+            router.replace({ name: route.name, params: { albumid: res.album_id } });
         }
         editing.value = false;
     }
     finally {
         saving.value = false;
     }
+}
+
+// la scrittura su file è in coda (job id3write): intanto aggiorniamo cache + anteprima col Blob scelto
+async function onCoverSaved(blob) {
+    await coversStore.setLocal(route.params.albumid, blob);
+    if (image.value) { URL.revokeObjectURL(image.value); }
+    image.value = URL.createObjectURL(blob);
 }
 
 function autoFillTrackNumbers() {
@@ -133,6 +147,7 @@ onUnmounted(() => { if (image.value) { URL.revokeObjectURL(image.value); } });
                     <div class="cover-col">
                         <img v-if="image" class="cover-img" :src="image" />
                         <div v-else class="cover-placeholder" />
+                        <Button v-if="editing" label="Cambia cover" icon="pi pi-image" text size="small" class="mt-2 w-full" @click="coverPickerVisible = true" />
                     </div>
                     <div class="fields-col">
                         <div class="field-row">
@@ -201,14 +216,25 @@ onUnmounted(() => { if (image.value) { URL.revokeObjectURL(image.value); } });
                     </Column>
                     <Column header="Bitrate" class="col-bitrate">
                         <template #body="{ data }">
-                            <span class="text-color-secondary text-sm">{{ data.bitrate ? data.bitrate + ' kbps' : '—' }}</span>
+                            <!-- bitrate in bps dal DB (music-metadata) → kbps -->
+                            <span class="text-color-secondary text-sm">{{ data.bitrate ? Math.round(data.bitrate / 1000) + ' kbps' : '—' }}</span>
                         </template>
                     </Column>
                 </DataTable>
             </template>
         </Card>
+
+        <CoverPicker
+            v-model:visible="coverPickerVisible"
+            :album-id="route.params.albumid"
+            :artist="albumMeta.artist"
+            :album="albumMeta.albumTitle"
+            :mbid="album?.mb_release_group_id"
+            @saved="onCoverSaved"
+        />
     </div>
 </template>
+
 
 <style scoped>
 .album-header {

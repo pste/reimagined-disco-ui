@@ -50,6 +50,8 @@ const useCoversStore = defineStore('covers', () => {
 
     return {
         get: async function(album_id) {
+            // chiave normalizzata: Collection usa Number, AlbumEdit la route param (string) → stessa entry
+            album_id = Number(album_id);
             // 1. in-memory cache (sync)
             if (memCache.has(album_id)) {
                 return memCache.get(album_id);
@@ -67,9 +69,17 @@ const useCoversStore = defineStore('covers', () => {
         },
 
         refresh: async function(album_id) {
+            album_id = Number(album_id);
             const buffer = await getcover(album_id); // fetch + IDB save, skip queue
             memCache.set(album_id, buffer);
             return buffer;
+        },
+
+        // aggiorna subito la cache con una cover scelta a mano (Blob), senza passare dal server
+        setLocal: async function(album_id, blob) {
+            album_id = Number(album_id);
+            memCache.set(album_id, blob);
+            await idxDB.put("covers", album_id, blob);
         }
     }
 })
