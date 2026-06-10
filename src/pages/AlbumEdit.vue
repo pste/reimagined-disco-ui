@@ -132,7 +132,7 @@ onUnmounted(() => { if (image.value) { URL.revokeObjectURL(image.value); } });
             <template #title>
                 <div class="flex align-items-center gap-2">
                     <Button icon="pi pi-arrow-left" text rounded severity="secondary" size="small" @click="router.back()" aria-label="Indietro" />
-                    <span class="flex-grow-1">{{ album?.title ?? 'Dettagli album' }}</span>
+                    <span class="flex-grow-1 card-title-text">{{ album?.title ?? 'Dettagli album' }}</span>
                     <template v-if="editing">
                         <Button label="Salva" icon="pi pi-check" severity="primary" size="small" text :loading="saving" @click="save" />
                         <Button label="Annulla" icon="pi pi-times" severity="danger" size="small" text :disabled="saving" @click="editing = false" />
@@ -303,5 +303,42 @@ onUnmounted(() => { if (image.value) { URL.revokeObjectURL(image.value); } });
     display: flex;
     align-items: center;
     gap: 0.25rem;
+}
+
+/* titolo lungo: ellipsis invece di spingere i bottoni fuori */
+.card-title-text {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Mobile: header impilato (cover sopra i campi) e tabella compatta */
+@media (max-width: 767px) {
+    .album-header {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .fields-col {
+        width: 100%;
+    }
+
+    :deep(.col-narrow) {
+        width: 3.6rem;
+    }
+
+    :deep(.col-bitrate) {
+        width: 4.6rem;
+    }
+
+    :deep(.col-number-input) {
+        width: 3rem;
+    }
+
+    :deep(.p-datatable .p-datatable-thead > tr > th),
+    :deep(.p-datatable .p-datatable-tbody > tr > td) {
+        padding: 0.4rem 0.3rem;
+    }
 }
 </style>

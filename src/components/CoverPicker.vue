@@ -175,7 +175,8 @@ watch(() => props.visible, (open) => {
 </script>
 
 <template>
-    <Dialog v-model:visible="dialogVisible" modal header="Scegli la cover" :style="{ width: '40rem' }" :dismissableMask="true">
+    <Dialog v-model:visible="dialogVisible" modal header="Scegli la cover"
+            :style="{ width: '40rem' }" :breakpoints="{ '768px': '95vw' }" :dismissableMask="true">
         <div class="picker-search">
             <InputText v-model="searchArtist" placeholder="Artista" :disabled="loadingFast" @keyup.enter="fetchFast()" />
             <InputText v-model="searchAlbum" placeholder="Album" :disabled="loadingFast" @keyup.enter="fetchFast()" />
@@ -316,5 +317,30 @@ watch(() => props.visible, (open) => {
 
 .picker-spacer {
     flex: 1;
+}
+
+/* Mobile: ricerca su due righe (input affiancati, bottone sotto) e footer che va a capo */
+@media (max-width: 767px) {
+    .picker-search {
+        flex-wrap: wrap;
+    }
+
+    .picker-search .p-inputtext {
+        flex: 1 1 40%;
+    }
+
+    .picker-search .p-button {
+        flex: 1 1 100%;
+    }
+
+    .picker-footer {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .picker-grid {
+        grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
+        max-height: 50vh;
+    }
 }
 </style>
