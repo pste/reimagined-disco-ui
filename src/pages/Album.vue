@@ -1,5 +1,5 @@
 <script setup>
-import { inject, ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { inject, ref, computed, watch, onMounted, onUnmounted, nextTick, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import useCollectionStore from '@/stores/collection'
@@ -29,11 +29,28 @@ const album = computed(() => collectionStore.getAlbum(route.params.albumid));
 const selectedSong = ref(); // id of the song selected
 const albumSongs = ref([]); // decouple album songs from playlist songs
 const image = ref(null); // can't have async computed, so I'm using a ref
+const songListbox = useTemplateRef('songListbox');
+
+// auto-scroll: keep the playing song at the top of the visible list.
+// scrolls the listbox container only (not the page); no-op if the playing
+// song is not part of the album shown in this view
+async function scrollToSelected() {
+    await nextTick(); // wait for the selection to render
+    const idx = albumSongs.value.findIndex(s => s.song_id === selectedSong.value);
+    if (idx < 0) { return; }
+    const root = songListbox.value?.$el;
+    const container = root?.querySelector('.p-listbox-list-container');
+    const option = container?.querySelectorAll('.p-listbox-option')[idx];
+    if (!option) { return; }
+    const delta = option.getBoundingClientRect().top - container.getBoundingClientRect().top;
+    container.scrollTo({ top: container.scrollTop + delta, behavior: 'smooth' });
+}
 
 // when the player changes, we update the UI
 watch(songIndex, () => {
     logger.log("album: watched playlistStore.songIndex");
     selectedSong.value = playlistStore.songId;
+    scrollToSelected();
 })
 
 // methods
@@ -111,6 +128,7 @@ onMounted(async() => {
   // update selected song for this view
   if (playlistStore.songId) {
     selectedSong.value = playlistStore.songId;
+    scrollToSelected();
   }
   // warm the cache for the first track as soon as the album is opened
   const firstSong = albumSongs.value[0];
@@ -165,6 +183,7 @@ onUnmounted(() => {
                         
                         <div class="flex-grow-1 m-0" >
                             <Listbox
+                                ref="songListbox"
                                 v-model="selectedSong"
                                 :options="albumSongs"
                                 optionValue="song_id"
