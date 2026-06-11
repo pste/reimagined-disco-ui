@@ -70,9 +70,15 @@ export function useCacheFeeder() {
 
     // background prefetch: warm the cache for a song (fire-and-forget friendly)
     async function prefetch(songId, meta) {
-        for (let chunkId = 1; chunkId < MAX_CHUNKS_GUARD; chunkId++) {
-            const { blob } = await getChunk(songId, chunkId, meta);
-            if (!blob || blob.size === 0) break;
+        // stop at totalChunks (known from chunk 1): probing past EOF costs a full
+        // re-chunk of the file server-side when its cache has expired
+        let maxChunks = MAX_CHUNKS_GUARD;
+        for (let chunkId = 1; chunkId <= maxChunks; chunkId++) {
+            const { blob, songMeta } = await getChunk(songId, chunkId, meta);
+            if (!blob || blob.size === 0) { break; }
+            if (chunkId === 1 && (songMeta?.totalChunks ?? 0) > 0) {
+                maxChunks = songMeta.totalChunks;
+            }
         }
         logger.log(`cacheFeeder: prefetch done for ${songId}`);
     }
