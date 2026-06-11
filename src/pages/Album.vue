@@ -99,6 +99,27 @@ async function loadSongs() {
     }
 }
 
+// download dell'intero album nella cache IndexedDB: prefetch sequenziale
+// (un brano alla volta per non saturare l'API), idempotente sui brani già in cache
+const caching = ref(false);
+const cacheProgress = ref(0);
+async function cacheAlbum() {
+    if (caching.value) { return; }
+    caching.value = true;
+    cacheProgress.value = 0;
+    try {
+        for (const song of albumSongs.value) {
+            const meta = { title: song.title, artist: song.artist ?? '', album: song.album ?? '' };
+            // un brano fallito non blocca i successivi (l'errore è già mostrato dal client API)
+            await feeder.prefetch(song.song_id, meta).catch(() => {});
+            cacheProgress.value++;
+        }
+    }
+    finally {
+        caching.value = false;
+    }
+}
+
 // clear queue and restarts playing
 async function playFromStart() {
     playlistStore.clear();
@@ -178,6 +199,17 @@ onUnmounted(() => {
                                 @click="router.push({ name: 'album-edit', params: { albumid: route.params.albumid } })"
                                 aria-label="Modifica album"
                             />
+                            <Button
+                                icon="pi pi-download"
+                                rounded
+                                text
+                                severity="secondary"
+                                :loading="caching"
+                                :disabled="albumSongs.length === 0"
+                                @click="cacheAlbum"
+                                aria-label="Scarica album in cache"
+                            />
+                            <span v-if="caching" class="text-sm text-color-secondary">{{ cacheProgress }}/{{ albumSongs.length }}</span>
                         </div>
                         <div class="text-color-secondary mb-3">{{ album?.name }}</div>
                         

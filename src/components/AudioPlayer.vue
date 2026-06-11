@@ -17,7 +17,8 @@ const coversStore = useCoversStore();
 
 // streamed audio (MSE, chunks pulled via the cache feeder)
 const streamer = useStreamedAudio();
-// feeder: used here only to prefetch the next song in background (warm the IDB cache)
+// feeder: used here to prefetch the next song in background (warm the IDB cache)
+// and to refresh the cache TTL of the song being played (touchSong)
 const feeder = useCacheFeeder();
 
 let coverObjectURL = null;
@@ -205,6 +206,11 @@ watch(songIndex, async (val) => {
       // fire-and-forget: streamer.load below resolves near the END of the song
       // (backpressure keeps ~30s buffered ahead), so the notification must not wait for it
       updateMediaSession(song, val);
+
+      // play = rinnovo della scadenza cache di TUTTO il brano (fire-and-forget):
+      // lo streamer legge i chunk progressivamente, da solo non coprirebbe la coda
+      // se il brano viene cambiato a metà
+      feeder.touchSong(song_id).catch(() => {});
 
       API.post('/stream/song', { song_id });
       // start playing as soon as the browser has enough data buffered (before full load)

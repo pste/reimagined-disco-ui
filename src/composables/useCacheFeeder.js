@@ -68,6 +68,16 @@ export function useCacheFeeder() {
         return promise;
     }
 
+    // rinnova la scadenza di TUTTI i chunk in cache del brano (idxDB.get fa touch del TTL
+    // a ogni lettura): chiamato all'avvio del play, copre anche i chunk di coda che lo
+    // streamer non leggerebbe se il brano viene cambiato a metà. Non scarica nulla.
+    async function touchSong(songId) {
+        for (let chunkId = 1; chunkId < MAX_CHUNKS_GUARD; chunkId++) {
+            const cached = await idxDB.get(CACHE_TABLE, cacheKey(songId, chunkId));
+            if (!cached) { break; }
+        }
+    }
+
     // background prefetch: warm the cache for a song (fire-and-forget friendly)
     async function prefetch(songId, meta) {
         // stop at totalChunks (known from chunk 1): probing past EOF costs a full
@@ -83,5 +93,5 @@ export function useCacheFeeder() {
         logger.log(`cacheFeeder: prefetch done for ${songId}`);
     }
 
-    return { getChunk, prefetch }
+    return { getChunk, touchSong, prefetch }
 }
