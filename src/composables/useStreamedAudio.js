@@ -7,6 +7,7 @@ import usePlaylistStore from '@/stores/playlist'
 const MIME_TYPE = 'audio/mpeg';
 const CACHE_TABLE = 'chunks';
 const MAX_CHUNKS_GUARD = 500;
+const CHUNK_BYTES = 1e6; // dimensione fissa dei chunk lato server (streamer.chunkFile)
 
 // feeder.prefetch(nextSongId) fire-and-forget dopo streamer.load.
 
@@ -31,6 +32,7 @@ export function useStreamedAudio() {
   let sourceBuffer = null;
   let currentObjectURL = null; // the audioElement refers to this always changing URL
   let abortController = null;
+  let removeSeekListener = null; // unhook del listener 'seeking' del load corrente
 
   // on stop we clean
   function revokeCurrentURL() {
@@ -42,6 +44,10 @@ export function useStreamedAudio() {
 
   // stop event — aborts any in-flight load and tears down MSE
   function stop() {
+    if (removeSeekListener) {
+      removeSeekListener();
+      removeSeekListener = null;
+    }
     if (abortController) {
       abortController.abort();
       abortController = null;
@@ -56,7 +62,7 @@ export function useStreamedAudio() {
   }
 
   //
-  async function load(audioEl, songId, meta) {
+  async function load(audioEl, songId, playerMeta) {
     // clear before start (again)
     stop();
 
@@ -207,46 +213,155 @@ export function useStreamedAudio() {
       // pull chunks from the feeder in order and append to MSE.
       // the streamer never touches the network: the feeder does.
       // drain after each chunk, trim played data, then throttle if buffer is full.
+      // un seek (seekTo) incrementa `generation`: il loop superato esce in silenzio
+      // al primo check dopo ogni await, quello nuovo riparte dal chunk del seek
       let appended = 0;
       let totalBytes = 0;
       let maxChunks = MAX_CHUNKS_GUARD;
-      for (let chunkId = 1; chunkId <= maxChunks; chunkId++) {
-        const { blob, songMeta } = await feeder.getChunk(songId, chunkId, meta);
-        signal.throwIfAborted();
-        if (!blob || blob.size === 0) {
-          logger.log(`streamedAudio: end of stream at chunk=${chunkId} (blob=${blob ? blob.size : 'undefined'})`);
-          break;
+      let songInfo = null; // songMeta del chunk 1: serve alla mappa tempo→chunk del seek
+      let generation = 0;
+      let loopError = null;
+      let loopEnded;
+      const loopEndedPromise = new Promise((resolve) => { loopEnded = resolve; });
+
+      async function appendLoop(gen, startChunk) {
+        for (let chunkId = startChunk; chunkId <= maxChunks; chunkId++) {
+          const { blob, songMeta } = await feeder.getChunk(songId, chunkId, playerMeta);
+          signal.throwIfAborted();
+          if (gen !== generation) { return; }
+          if (!blob || blob.size === 0) {
+            logger.log(`streamedAudio: end of stream at chunk=${chunkId} (blob=${blob ? blob.size : 'undefined'})`);
+            break;
+          }
+          // update loop bound immediately (pure JS variable, no MSE interaction needed)
+          if (chunkId === 1 && (songMeta?.totalChunks ?? 0) > 0) {
+            maxChunks = songMeta.totalChunks;
+            songInfo = songMeta;
+          }
+          const buf = await blob.arrayBuffer();
+          signal.throwIfAborted();
+          if (gen !== generation) { return; }
+          enqueueChunk(buf);
+          await waitForDrain();
+          signal.throwIfAborted();
+          if (gen !== generation) { return; }
+          // propagate duration to store after first chunk is appended
+          if (chunkId === 1 && (songMeta?.duration ?? 0) > 0) {
+            playlistStore.currentSongDuration = songMeta.duration;
+            // duration nota anche a MSE: senza, il browser clampa i seek oltre i dati già appesi
+            try { mediaSource.duration = songMeta.duration; } catch (_) { /* updating: ignore */ }
+          }
+          await trimBuffer();
+          signal.throwIfAborted();
+          if (gen !== generation) { return; }
+          await throttleIfBufferFull();
+          signal.throwIfAborted();
+          if (gen !== generation) { return; }
+          appended += 1;
+          totalBytes += buf.byteLength;
         }
-        // update loop bound immediately (pure JS variable, no MSE interaction needed)
-        if (chunkId === 1 && (songMeta?.totalChunks ?? 0) > 0) {
-          maxChunks = songMeta.totalChunks;
-        }
-        const buf = await blob.arrayBuffer();
-        signal.throwIfAborted();
-        enqueueChunk(buf);
+        // fine naturale del brano: drain e chiusura dello stream (serve anche ai
+        // re-append post-seek: senza endOfStream l'elemento non emette 'ended')
         await waitForDrain();
         signal.throwIfAborted();
-        // propagate duration to store after first chunk is appended
-        if (chunkId === 1 && (songMeta?.duration ?? 0) > 0) {
-          playlistStore.currentSongDuration = songMeta.duration;
+        if (gen !== generation) { return; }
+        logger.log(`streamedAudio: song=${songId} appended ${appended} chunks, ${totalBytes} bytes`);
+        if (mediaSource.readyState === 'open') {
+          try { mediaSource.endOfStream(); } catch (_) { /* ignore */ }
         }
-        await trimBuffer();
-        signal.throwIfAborted();
-        await throttleIfBufferFull();
-        signal.throwIfAborted();
-        appended += 1;
-        totalBytes += buf.byteLength;
+        loading.value = false;
+        loopEnded();
       }
-      logger.log(`streamedAudio: song=${songId} appended ${appended} chunks, ${totalBytes} bytes`);
 
-      await waitForDrain();
+      function onLoopError(err) {
+        if (err?.name !== 'AbortError') {
+          logger.error('streamedAudio error:', err);
+          error.value = err;
+          errorsStore.showError(streamErrorMessage(err));
+          if (mediaSource && mediaSource.readyState === 'open') {
+            try { mediaSource.endOfStream('network'); } catch (_) { /* ignore */ }
+          }
+        }
+        loopError = err;
+        loading.value = false;
+        loopEnded(); // sblocca comunque load()
+      }
+
+      // attende che il SourceBuffer sia fermo (nessun append/remove in volo).
+      // NB: dopo un abort() il browser accoda comunque un updateend "stantio",
+      // quindi non basta il primo evento: si risolve solo con updating === false
+      function waitForIdle() {
+        return new Promise((resolve) => {
+          const sb = sourceBuffer;
+          if (!sb || !sb.updating) { resolve(); return; }
+          const onEnd = () => {
+            if (sb.updating) { return; }
+            sb.removeEventListener('updateend', onEnd);
+            resolve();
+          };
+          sb.addEventListener('updateend', onEnd);
+        });
+      }
+
+      // svuota tutto il buffered (preparazione al re-append dal punto di seek)
+      function removeAllBuffered() {
+        return new Promise((resolve) => {
+          const sb = sourceBuffer;
+          if (!sb || sb.buffered.length === 0) { resolve(); return; }
+          const end = sb.buffered.end(sb.buffered.length - 1);
+          const onEnd = () => {
+            if (sb.updating) { return; } // updateend stantio (es. dell'abort): la remove è ancora in corso
+            sb.removeEventListener('updateend', onEnd);
+            resolve();
+          };
+          sb.addEventListener('updateend', onEnd);
+          try { sb.remove(0, end + 1); }
+          catch (_) { sb.removeEventListener('updateend', onEnd); resolve(); }
+        });
+      }
+
+      // seek fuori dal buffered: scarta la pipeline corrente e riparte dal chunk che
+      // contiene il punto richiesto. Mappa tempo→chunk con stima CBR dal bitrate (i
+      // chunk sono tagli fissi da 1MB lato server; il decoder MP3 si risincronizza
+      // sul primo frame header del chunk, come già avviene coi tagli sequenziali)
+      async function seekTo(seconds) {
+        generation += 1;
+        const gen = generation;
+        queue.length = 0;
+        pendingPumpError = null;
+        if (drainResolve) { drainResolve(); drainResolve = null; drainReject = null; } // release the superseded loop
+        try { if (sourceBuffer.updating) { sourceBuffer.abort(); } } catch (_) { /* ignore */ }
+        await removeAllBuffered(); // riapre anche il MediaSource se era 'ended'
+        await waitForIdle(); // timestampOffset esige updating === false
+        if (gen !== generation || signal.aborted) { return; }
+        // abort incondizionato a buffer fermo: resetta il parser dei segmenti.
+        // I tagli da 1MB spezzano i frame MP3, quindi dopo un append il parser resta
+        // in PARSING_MEDIA_SEGMENT e timestampOffset sarebbe vietato in quello stato
+        try { sourceBuffer.abort(); } catch (_) { /* ignore */ }
+        const bytesPerSec = songInfo.bitrate / 8;
+        const startChunk = Math.max(1, Math.min(Math.floor((seconds * bytesPerSec) / CHUNK_BYTES) + 1, maxChunks));
+        sourceBuffer.timestampOffset = ((startChunk - 1) * CHUNK_BYTES) / bytesPerSec;
+        appendLoop(gen, startChunk).catch(onLoopError);
+      }
+
+      // i seek dentro al buffered li gestisce il browser da solo; fuori, si riparte
+      // dal chunk giusto invece di accodare in sequenza tutti quelli intermedi
+      function onSeeking() {
+        if (!songInfo?.bitrate || !sourceBuffer) { return; } // mappa tempo→chunk non ancora disponibile
+        const t = audioEl.currentTime;
+        const buffered = sourceBuffer.buffered;
+        for (let i = 0; i < buffered.length; i++) {
+          if (t >= buffered.start(i) - 0.5 && t <= buffered.end(i)) { return; }
+        }
+        seekTo(t).catch((err) => { logger.error('streamedAudio: seekTo error', err); });
+      }
+      audioEl.addEventListener('seeking', onSeeking);
+      removeSeekListener = () => { audioEl.removeEventListener('seeking', onSeeking); };
+
+      appendLoop(generation, 1).catch(onLoopError);
+      await loopEndedPromise;
+      if (loopError) { return; } // errore già gestito da onLoopError (incluso AbortError)
       signal.throwIfAborted();
-
-      if (mediaSource.readyState === 'open') {
-        try { mediaSource.endOfStream(); } catch (_) { /* ignore */ }
-      }
-
-      loading.value = false;
     }
     catch (err) {
       if (err?.name === 'AbortError') {

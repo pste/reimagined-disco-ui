@@ -1,7 +1,9 @@
 import { inject } from 'vue'
 import logger from '@/plugins/logger'
 import useParametersStore from '@/stores/parameters'
+import useCacheStore from '@/stores/cache'
 
+//
 const CACHE_TABLE = 'chunks';
 const MAX_CHUNKS_GUARD = 500;
 const AUDIO_MIME = 'audio/mpeg';
@@ -21,19 +23,15 @@ function base64ToBlob(b64) {
 
 export function useCacheFeeder() {
     const API = inject('API');
-    const idxDB = inject('idxDB');
+    const cacheStore = useCacheStore();
     const parametersStore = useParametersStore();
 
-    // build the key for a song's chunk
-    function cacheKey(songId, chunkId) {
-        return `${songId}_${chunkId}`;
-    }
-
     // Returns { blob, songMeta } — songMeta is populated for chunk 1 (from network or IDB)
-    async function getChunk(songId, chunkId, meta) {
-        const key = cacheKey(songId, chunkId);
+    async function getChunk(songId, chunkId, playerMeta) {
+        const key = cacheStore.cacheKey(songId, chunkId);
 
-        const cached = await idxDB.get(CACHE_TABLE, key);
+        // get from cache if cached ...
+        const cached = await cacheStore.get(CACHE_TABLE, key);
         if (cached?.blob) {
             // chunk 1 must carry songMeta; old cache records lack it → fall through to re-fetch
             if (chunkId !== 1 || cached.songMeta) {
@@ -41,8 +39,10 @@ export function useCacheFeeder() {
             }
         }
 
+        // get from current request as soon is ready
         if (inFlight.has(key)) return inFlight.get(key);
 
+        // build and exec a chunk (inFlight) request
         const promise = (async () => {
             try {
                 const json = await API.get('/chunk/song', { id: songId, chunkIndex: chunkId });
@@ -54,9 +54,9 @@ export function useCacheFeeder() {
                     await parametersStore.load();
                     const ttlMs = parametersStore.cacheTTLDays * 24 * 60 * 60 * 1000;
                     const record = { blob, songId, chunkId, expiresAt: Date.now() + ttlMs, ttlMs };
-                    if (meta) { record.meta = meta; }
+                    if (playerMeta) { record.meta = playerMeta; }
                     if (songMeta) { record.songMeta = songMeta; }
-                    await idxDB.put(CACHE_TABLE, key, record);
+                    await cacheStore.put(CACHE_TABLE, key, record);
                 }
                 return { blob, songMeta };
             }
@@ -66,16 +66,6 @@ export function useCacheFeeder() {
         })();
         inFlight.set(key, promise);
         return promise;
-    }
-
-    // rinnova la scadenza di TUTTI i chunk in cache del brano (idxDB.get fa touch del TTL
-    // a ogni lettura): chiamato all'avvio del play, copre anche i chunk di coda che lo
-    // streamer non leggerebbe se il brano viene cambiato a metà. Non scarica nulla.
-    async function touchSong(songId) {
-        for (let chunkId = 1; chunkId < MAX_CHUNKS_GUARD; chunkId++) {
-            const cached = await idxDB.get(CACHE_TABLE, cacheKey(songId, chunkId));
-            if (!cached) { break; }
-        }
     }
 
     // background prefetch: warm the cache for a song (fire-and-forget friendly)
@@ -93,5 +83,5 @@ export function useCacheFeeder() {
         logger.log(`cacheFeeder: prefetch done for ${songId}`);
     }
 
-    return { getChunk, touchSong, prefetch }
+    return { getChunk, prefetch }
 }

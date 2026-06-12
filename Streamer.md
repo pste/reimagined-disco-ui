@@ -124,6 +124,17 @@ At 320 kbps, 30 seconds of audio is about 1.2 MB — well within the MSE quota. 
 
 This throttle is only active when `currentTime > 0`. Before playback has started there is nothing to throttle against, so for very large songs loaded while paused the loop still relies on `pendingPumpError` (see below) to surface any quota error cleanly.
 
+### Seeking
+
+The append loop is wrapped in `appendLoop(gen, startChunk)` and guarded by a `generation` counter. A `seeking` event on the audio element is handled like this:
+
+- target inside a buffered range → the browser handles it alone, nothing to do;
+- target outside → `seekTo(seconds)`: bump `generation` (the superseded loop exits silently at its next check), clear the queue, abort any in-flight append, remove all buffered data, then `abort()` once more with the buffer idle — the 1MB cuts split MP3 frames, so the segment parser is left in `PARSING_MEDIA_SEGMENT` and `timestampOffset` cannot be set until `abort()` resets it. Finally set `sourceBuffer.timestampOffset` to the start time of the target chunk and restart `appendLoop` from that chunk. Stale `updateend` events (queued by aborts) are ignored: completion waits are resolved only with `updating === false`.
+
+The seconds → chunk mapping is a CBR estimate (`bitrate / 8` bytes per second over fixed 1MB chunks, from chunk 1 metadata). Chunk boundaries split MP3 frames arbitrarily, but the decoder resyncs on the first frame header — same as with sequential chunk concatenation. `mediaSource.duration` is set from chunk 1 metadata, otherwise the browser would clamp seeks beyond the data appended so far.
+
+This makes seeks O(1) instead of O(distance): previously a seek to an unbuffered point forced the loop to append (and immediately trim away) every intermediate chunk — re-downloading the non-cached ones.
+
 ### Early Play via `canplay`
 
 `AudioPlayer.vue` registers a `canplay` listener on the `<audio>` element before calling `await streamer.load()`. The browser fires `canplay` as soon as it has buffered enough data to begin playback — typically after the first one or two chunks. At that point `music.play()` is called, `currentTime` starts advancing, and both `trimBuffer` and `throttleIfBufferFull` become effective for the remainder of the load.

@@ -1,8 +1,9 @@
 <script setup>
-import { ref, computed, inject, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import useLoadingStore from '@/stores/loading'
+import useCacheStore from '@/stores/cache'
 
-const idxDB = inject('idxDB');
+const cacheStore = useCacheStore();
 const loadingStore = useLoadingStore();
 
 const CACHE_TABLE = 'chunks';
@@ -40,22 +41,21 @@ const totalSize = computed(() =>
 async function loadCache() {
     loadingStore.start();
     try {
-        allChunks.value = await idxDB.getAll(CACHE_TABLE);
+        allChunks.value = await cacheStore.getAll(CACHE_TABLE);
     }
     finally {
         loadingStore.stop();
     }
 }
 
+// le mutazioni passano dallo store cache, che tiene aggiornata
+// la Map reattiva (spunte "in cache" della pagina Album)
 async function deleteSong(songId) {
     deleting.value = songId;
     loadingStore.start();
     try {
-        const toDelete = allChunks.value.filter(r => r.data?.songId === songId);
-        for (const record of toDelete) {
-            await idxDB.remove(CACHE_TABLE, record.id);
-        }
-        allChunks.value = await idxDB.getAll(CACHE_TABLE);
+        await cacheStore.removeSong(songId);
+        allChunks.value = await cacheStore.getAll(CACHE_TABLE);
     }
     finally {
         deleting.value = null;
@@ -66,9 +66,7 @@ async function deleteSong(songId) {
 async function deleteAll() {
     loadingStore.start();
     try {
-        for (const record of allChunks.value) {
-            await idxDB.remove(CACHE_TABLE, record.id);
-        }
+        await cacheStore.removeAll();
         allChunks.value = [];
     }
     finally {
@@ -79,8 +77,8 @@ async function deleteAll() {
 async function sweepExpired() {
     loadingStore.start();
     try {
-        await idxDB.sweep(CACHE_TABLE);
-        allChunks.value = await idxDB.getAll(CACHE_TABLE);
+        await cacheStore.sweep();
+        allChunks.value = await cacheStore.getAll(CACHE_TABLE);
     }
     finally {
         loadingStore.stop();

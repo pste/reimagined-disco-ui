@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import usePlaylistStore from '@/stores/playlist'
 import useCoversStore from '@/stores/covers'
+import useCacheStore from '@/stores/cache'
 import { useStreamedAudio } from '@/composables/useStreamedAudio'
 import { useCacheFeeder } from '@/composables/useCacheFeeder'
 import logger from '@/plugins/logger'
@@ -14,6 +15,7 @@ const router = useRouter();
 // store init
 const playlistStore = usePlaylistStore();
 const coversStore = useCoversStore();
+const cacheStore = useCacheStore();
 
 // streamed audio (MSE, chunks pulled via the cache feeder)
 const streamer = useStreamedAudio();
@@ -201,7 +203,7 @@ watch(songIndex, async (val) => {
       buffering.value = true;
       songDuration.value = 0;
 
-      const meta = { title: song.title, artist: song.artist ?? '', album: song.album ?? '' };
+      const playerMeta = { title: song.title, artist: song.artist ?? '', album: song.album ?? '' };
 
       // fire-and-forget: streamer.load below resolves near the END of the song
       // (backpressure keeps ~30s buffered ahead), so the notification must not wait for it
@@ -210,7 +212,7 @@ watch(songIndex, async (val) => {
       // play = rinnovo della scadenza cache di TUTTO il brano (fire-and-forget):
       // lo streamer legge i chunk progressivamente, da solo non coprirebbe la coda
       // se il brano viene cambiato a metà
-      feeder.touchSong(song_id).catch(() => {});
+      cacheStore.touchSong(song_id).catch(() => {});
 
       API.post('/stream/song', { song_id });
       // start playing as soon as the browser has enough data buffered (before full load)
@@ -218,7 +220,7 @@ watch(songIndex, async (val) => {
       const earlyPlay = () => { buffering.value = false; if (isPlaying.value) { music.play(); } };
       audioElement.value.addEventListener('canplay', earlyPlay, { once: true });
 
-      await streamer.load(audioElement.value, song_id, meta);
+      await streamer.load(audioElement.value, song_id, playerMeta);
 
       audioElement.value.removeEventListener('canplay', earlyPlay);
       // bail if songIndex changed while loading (user skipped song)

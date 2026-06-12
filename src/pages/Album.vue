@@ -6,29 +6,34 @@ import useCollectionStore from '@/stores/collection'
 import usePlaylistStore from '@/stores/playlist'
 import useCoversStore from '@/stores/covers'
 import useLoadingStore from '@/stores/loading'
+import useCacheStore from '@/stores/cache'
 import logger from '@/plugins/logger'
 import { useCacheFeeder } from '@/composables/useCacheFeeder'
 
 // init stuff
 const route = useRoute();
 const router = useRouter();
+
 const collectionStore = useCollectionStore();
 const coversStore = useCoversStore();
 const playlistStore = usePlaylistStore();
-const {songIndex} = storeToRefs(playlistStore);
+const loadingStore = useLoadingStore();
+const cacheStore= useCacheStore();
 
 //
 const API = inject('API');
-const loadingStore = useLoadingStore();
 const feeder = useCacheFeeder();
 
 //
 const album = computed(() => collectionStore.getAlbum(route.params.albumid));
 
 // data
+const {songIndex} = storeToRefs(playlistStore);
+
 const selectedSong = ref(); // id of the song selected
 const albumSongs = ref([]); // decouple album songs from playlist songs
 const image = ref(null); // can't have async computed, so I'm using a ref
+
 const songListbox = useTemplateRef('songListbox');
 
 // auto-scroll: keep the playing song at the top of the visible list.
@@ -224,8 +229,9 @@ onUnmounted(() => {
                                 :listStyle="{ overflowY: 'auto' }"
                             >
                                 <template #option="slotProps">
-                                    <div class="flex items-center w-full" @click="selectSong(slotProps.option)">
-                                        <div>{{ slotProps.option.track_nr }}. {{ slotProps.option.title }}</div>
+                                    <div class="flex align-items-center w-full" @click="selectSong(slotProps.option)">
+                                        <div class="flex-grow-1">{{ slotProps.option.track_nr }}. {{ slotProps.option.title }}</div>
+                                        <i v-if="cacheStore.cachedSongIds.includes(slotProps.option.song_id)" class="pi pi-arrow-circle-down cached-icon" title="Brano in cache" />
                                     </div>
                                 </template>
                             </Listbox>
@@ -245,6 +251,12 @@ onUnmounted(() => {
 .listbox-songs :deep(.p-listbox-list-container) {
     max-height: 320px;
     overflow-y: auto;
+}
+
+.cached-icon {
+    font-size: 0.8rem;
+    opacity: 0.6;
+    margin-left: 0.5rem;
 }
 
 @media (max-width: 767px) {
