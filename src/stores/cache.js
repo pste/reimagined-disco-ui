@@ -14,9 +14,20 @@ const useCacheStore = defineStore('cache', () => {
     // (un upsert dello stesso chunk non deve gonfiare il conteggio)
     const cachedSongMap = shallowRef(new Map()); // ref "leggero"
 
-    // init: chi muta la Map aspetta `ready`, così l'assegnazione iniziale
-    // non sovrascrive update arrivati mentre l'init era in corso
-    const ready = initCachedSongMap().then(val => cachedSongMap.value = val);
+    // init fire-and-forget (la setup Pinia deve restare sincrona): alla fine FONDE
+    // con la Map corrente invece di sovrascriverla, così i put arrivati durante
+    // l'init non vanno persi e i metodi non devono aspettare nessuna promise
+    initCachedSongMap().then(initial => {
+        for (const [songId, entry] of cachedSongMap.value) {
+            const target = initial.get(songId);
+            if (!target) { initial.set(songId, entry); }
+            else {
+                entry.chunks.forEach(c => target.chunks.add(c));
+                if (!target.total) { target.total = entry.total; }
+            }
+        }
+        cachedSongMap.value = initial;
+    });
 
     // brani COMPLETI in cache (tutti i chunk presenti; il totale è noto dal songMeta del chunk 1)
     const cachedSongIds = computed(() => {
@@ -76,7 +87,6 @@ const useCacheStore = defineStore('cache', () => {
     async function put(tableName, key, record) {
         const rtn = await idxDB.put(tableName, key, record);
         if (tableName === CACHE_TABLE_CHUNKS) {
-            await ready;
             addChunk(cachedSongMap.value, record);
             logger.log(`cache: added song=${record.songId} chunk=${record.chunkId}`);
             notifyMapChanged();
@@ -92,7 +102,6 @@ const useCacheStore = defineStore('cache', () => {
                 await idxDB.remove(CACHE_TABLE_CHUNKS, record.id);
             }
         }
-        await ready;
         cachedSongMap.value.delete(songId);
         notifyMapChanged();
     }
@@ -103,7 +112,6 @@ const useCacheStore = defineStore('cache', () => {
         for (const record of records) {
             await idxDB.remove(CACHE_TABLE_CHUNKS, record.id);
         }
-        await ready;
         cachedSongMap.value = new Map();
     }
 
