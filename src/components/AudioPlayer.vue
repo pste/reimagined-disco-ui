@@ -220,6 +220,20 @@ watch(songIndex, async (val) => {
       const earlyPlay = () => { buffering.value = false; if (isPlaying.value) { music.play(); } };
       audioElement.value.addEventListener('canplay', earlyPlay, { once: true });
 
+      // warm the cache for the next track as soon as this one can play: waiting for
+      // streamer.load() would start the prefetch only near the END of the current song
+      // (backpressure), leaving the next track cold for most of the playback
+      const prefetchNext = () => {
+        const nextSong = playlistStore.playList[val + 1];
+        // bail if songIndex changed meanwhile (user skipped song)
+        if (songIndex.value !== val || !nextSong?.song_id) { return; }
+        const nextMeta = { title: nextSong.title, artist: nextSong.artist ?? '', album: nextSong.album ?? '' };
+        feeder.prefetch(nextSong.song_id, nextMeta).catch((err) => {
+          logger.log('audioplayer: prefetch next failed', err);
+        });
+      };
+      audioElement.value.addEventListener('canplay', prefetchNext, { once: true });
+
       await streamer.load(audioElement.value, song_id, playerMeta);
 
       audioElement.value.removeEventListener('canplay', earlyPlay);
@@ -228,14 +242,6 @@ watch(songIndex, async (val) => {
 
       if (shouldPlay) {
         music.play();
-        // warm the cache for the next track so the gap at track change is minimal
-        const nextSong = playlistStore.playList[val + 1];
-        if (nextSong?.song_id) {
-          const nextMeta = { title: nextSong.title, artist: nextSong.artist ?? '', album: nextSong.album ?? '' };
-          feeder.prefetch(nextSong.song_id, nextMeta).catch((err) => {
-            logger.log('audioplayer: prefetch next failed', err);
-          });
-        }
       }
     }
     else { // no more songs
