@@ -7,5 +7,24 @@ body {
     cursor: pointer;
 }
 
+/* griglia di MiniDisc condivisa da Collection, Artists e Artist */
+.collection-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+}
+
+.collection-grid > * {
+    min-width: 0;
+}
+
+@media (min-width: 768px) {
+    .collection-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+}
+
 /* Fix for chrome: needed to avoid disappearing / moved icons */
 ::before, ::after { backface-visibility: unset !important; }

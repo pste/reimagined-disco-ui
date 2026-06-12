@@ -8,6 +8,8 @@ import ParametersView from '../pages/Parameters.vue'
 import CacheView from '../pages/Cache.vue'
 import AlbumEditView from '../pages/AlbumEdit.vue'
 import JobsView from '../pages/Jobs.vue'
+import ArtistsView from '../pages/Artists.vue'
+import ArtistView from '../pages/Artist.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -27,6 +29,18 @@ const router = createRouter({
         path: '/album/:albumid',
         name: 'album',
         component: AlbumView,
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/artists',
+        name: 'artists',
+        component: ArtistsView,
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/artist/:artistid',
+        name: 'artist',
+        component: ArtistView,
         meta: { requiresAuth: true }
     },
     {

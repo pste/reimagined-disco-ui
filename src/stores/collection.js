@@ -57,7 +57,7 @@ const useCollectionStore = defineStore('collection', () => {
         filter,
         // getter: the filtered collection
         filteredData,
-        // getter: the collection page (all of the artists)
+        // getter: the artists page (one entry per artist, with album count)
         artists: computed(() => {
             //
             const map = new Map();
@@ -65,13 +65,15 @@ const useCollectionStore = defineStore('collection', () => {
                 const id = item.artist_id;
                 if (map.has(id)) {
                     const item2 = map.get(id);
+                    item2.albumCount++;
                     // keeping only the most recent album info as artist cover
+                    // (item has no albumCount, so assign() preserves it)
                     if (item.year > item2.year) {
-                        map.set(id, item);
+                        Object.assign(item2, item);
                     }
                 }
                 else {
-                    map.set(id, item);
+                    map.set(id, { ...item, albumCount: 1 });
                 }
             }
             return Array.from(map.values())
@@ -84,11 +86,19 @@ const useCollectionStore = defineStore('collection', () => {
                 title: ''
             }
         },
-        // actions: the artist discography
-        /*getDiscography: function(artist_id) {
-            return items.value.filter( el => el.artist_id == artist_id )
-        },*/
-        // actions: the artist discography
+        // actions: the artist discography, in chronological order
+        getDiscography: function(artist_id) {
+            return items.value
+                .filter( el => el.artist_id == artist_id )
+                .sort( (a,b) => {
+                    const av = a.year ?? '';
+                    const bv = b.year ?? '';
+                    if (av < bv) return -1;
+                    if (av > bv) return 1;
+                    return 0;
+                });
+        },
+        // actions: a single album info
         getAlbum: function(album_id) {
             const found = items.value.filter( el => el.album_id == album_id );
             if (found.length === 1) {

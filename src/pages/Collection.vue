@@ -60,23 +60,7 @@ function scrollToBottom() {
     }
 }
 
-.collection-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.75rem;
-}
-
-.collection-grid > * {
-    min-width: 0;
-}
-
-@media (min-width: 768px) {
-    .collection-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-    }
-}
+/* .collection-grid è globale in style.css (condivisa con Artists/Artist) */
 
 .list {
     display: inline-block;

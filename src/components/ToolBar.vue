@@ -34,6 +34,13 @@ const menuItems = ref([
                 }
             },*/
             {
+                label: 'Artists',
+                icon: 'pi pi-users',
+                command: () => {
+                    router.push({ name: 'artists' });
+                }
+            },
+            {
                 label: 'Parameters',
                 icon: 'pi pi-folder',
                 command: () => {
