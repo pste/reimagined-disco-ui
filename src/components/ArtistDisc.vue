@@ -96,7 +96,8 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div ref="card" class="flex flex-column surface-card border-round shadow-2 artistdisc-card p-1 surface-border">
+    <!-- niente card: solo la pila di cover e, sotto, un box col nome artista -->
+    <div ref="card" class="flex flex-column artistdisc-card">
         <div class="stack w-full mb-2">
             <div
                 v-for="(img, i) in layers"
@@ -105,8 +106,8 @@ onUnmounted(() => {
                 class="stack-cover border-round bg-gray-100"
             ></div>
         </div>
-        <div class="flex flex-column">
-            <span class="font-bold text-sm text-400 cover-text">
+        <div class="artist-box surface-100 border-round text-center px-2 py-1 flex flex-column">
+            <span class="font-bold text-sm text-color cover-text">
                 {{ artist }}
             </span>
             <span class="text-xs text-300 line-height-3 cover-text">
