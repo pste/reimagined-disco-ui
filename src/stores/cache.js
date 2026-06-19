@@ -37,6 +37,17 @@ const useCacheStore = defineStore('cache', () => {
             ;
     })
 
+    // brani in SCARICAMENTO: totale noto (dal chunk 1) ma non ancora tutti i chunk in cache.
+    // Complemento di cachedSongIds: mentre un brano suona (o è in prefetch) la sua cache si
+    // riempie e qui compare finché non diventa completo. I record vecchi senza total restano
+    // fuori da entrambi (come prima), si risanano al riascolto quando il chunk 1 riporta il songMeta
+    const downloadingSongIds = computed(() => {
+        return [...cachedSongMap.value]
+            .filter(([k, v]) => v.total && v.chunks.size < v.total) // partial songs
+            .map(([k, v]) => k)
+            ;
+    })
+
     // stato cache iniziale letto dal DB.
     // Lettura readonly (getAll): nessun touch del TTL, nessun download
     async function initCachedSongMap() {
@@ -135,6 +146,7 @@ const useCacheStore = defineStore('cache', () => {
         touchSong,
         //
         cachedSongIds,
+        downloadingSongIds,
     }
 });
 

@@ -232,6 +232,7 @@ onUnmounted(() => {
                                     <div class="flex align-items-center w-full" @click="selectSong(slotProps.option)">
                                         <div class="flex-grow-1">{{ slotProps.option.track_nr }}. {{ slotProps.option.title }}</div>
                                         <i v-if="cacheStore.cachedSongIds.includes(slotProps.option.song_id)" class="pi pi-arrow-circle-down cached-icon" title="Brano in cache" />
+                                        <i v-else-if="cacheStore.downloadingSongIds.includes(slotProps.option.song_id)" class="pi pi-arrow-circle-down cached-icon downloading" title="In scaricamento" />
                                     </div>
                                 </template>
                             </Listbox>
@@ -257,6 +258,18 @@ onUnmounted(() => {
     font-size: 0.8rem;
     opacity: 0.6;
     margin-left: 0.5rem;
+}
+
+/* stato "in scaricamento": stessa icona, colorata e pulsante */
+.cached-icon.downloading {
+    color: var(--primary-color);
+    opacity: 1;
+    animation: cache-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes cache-pulse {
+    0%, 100% { opacity: 0.35; }
+    50%      { opacity: 1; }
 }
 
 @media (max-width: 767px) {
