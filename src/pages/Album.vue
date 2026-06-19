@@ -36,18 +36,20 @@ const image = ref(null); // can't have async computed, so I'm using a ref
 
 const songListbox = useTemplateRef('songListbox');
 
-// auto-scroll: keep the playing song at the top of the visible list.
-// scrolls the listbox container only (not the page); no-op if the playing
-// song is not part of the album shown in this view
+// auto-scroll: keep the playing song as the 2nd visible row (one song above it
+// stays in view). Scrolls the listbox container only (not the page); no-op if the
+// playing song is not part of the album shown in this view
 async function scrollToSelected() {
     await nextTick(); // wait for the selection to render
     const idx = albumSongs.value.findIndex(s => s.song_id === selectedSong.value);
     if (idx < 0) { return; }
     const root = songListbox.value?.$el;
     const container = root?.querySelector('.p-listbox-list-container');
-    const option = container?.querySelectorAll('.p-listbox-option')[idx];
-    if (!option) { return; }
-    const delta = option.getBoundingClientRect().top - container.getBoundingClientRect().top;
+    const options = container?.querySelectorAll('.p-listbox-option');
+    if (!options?.length) { return; }
+    // anchor the row above the playing one to the top, so the playing one sits 2nd
+    const anchor = options[Math.max(0, idx - 1)];
+    const delta = anchor.getBoundingClientRect().top - container.getBoundingClientRect().top;
     container.scrollTo({ top: container.scrollTop + delta, behavior: 'smooth' });
 }
 
