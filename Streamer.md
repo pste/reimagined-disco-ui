@@ -113,16 +113,16 @@ This frees MSE buffer space continuously during playback. It is a no-op when `cu
 
 Even with `trimBuffer`, loading from cache can be much faster than playback. Without backpressure, the loop would fill the entire MSE buffer before the audio has played a single second, causing `QuotaExceededError`.
 
-`throttleIfBufferFull` adds that backpressure: after each chunk, it checks how many seconds are buffered **ahead** of the current playhead. If the amount exceeds `BUFFER_AHEAD_SECS` (30 seconds), it suspends the loop and waits for the next `timeupdate` event — meaning it resumes only once the audio has actually consumed some data.
+`throttleIfBufferFull` adds that backpressure: after each chunk, it checks how many seconds are buffered **ahead** of the current playhead. If the amount exceeds `BUFFER_AHEAD_SECS` (30 seconds), it parks the loop and waits for the next `timeupdate`, `playing`, or abort event — meaning it resumes only once the audio has actually consumed some data (or playback resumes / the load is aborted).
 
 ```
 buffered ahead = sourceBuffer.buffered.end() - audioEl.currentTime
-if ahead > 30s  →  wait for timeupdate  →  retry
+if ahead > 30s  →  wait for timeupdate | playing | abort  →  retry
 ```
 
 At 320 kbps, 30 seconds of audio is about 1.2 MB — well within the MSE quota. The loop is also unblocked immediately by the abort signal, so song changes remain instant.
 
-This throttle is only active when `currentTime > 0`. Before playback has started there is nothing to throttle against, so for very large songs loaded while paused the loop still relies on `pendingPumpError` (see below) to surface any quota error cleanly.
+The throttle is active **even while paused** (`currentTime` 0 → `ahead` = total buffered span). A song that is merely *loaded but not playing* — e.g. the last-played song restored at app start — therefore pre-buffers ~30s and then **parks**, instead of filling the whole buffer and throwing `QuotaExceededError`. `timeupdate` never fires while paused, so the loop also wakes on `playing` (when the user presses play) and on abort (song change); parking while paused is the desired state, not a deadlock.
 
 ### Seeking
 

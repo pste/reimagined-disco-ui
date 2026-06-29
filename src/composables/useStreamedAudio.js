@@ -192,19 +192,28 @@ export function useStreamedAudio() {
       }
 
       // backpressure: if more than BUFFER_AHEAD_SECS of audio is already buffered ahead
-      // of the playhead, wait for timeupdate before appending the next chunk.
-      // only active once playback has started (currentTime > 0) — before that, trimBuffer
-      // is a no-op anyway and we rely on pendingPumpError to surface QuotaExceededError.
+      // of the playhead, park the loop until playback consumes the buffer before appending
+      // the next chunk. Attivo SEMPRE, anche a player fermo (currentTime 0 → ahead = durata
+      // bufferizzata): così il buffer resta limitato anche su un brano solo caricato e non
+      // avviato, evitando il QuotaExceededError. timeupdate non scatta da fermo, quindi si
+      // attende anche 'playing' (ripresa) e 'abort': a player in pausa il loop si parcheggia
+      // qui finché l'utente non preme play — stato desiderato, nessun deadlock.
       const BUFFER_AHEAD_SECS = 30;
       async function throttleIfBufferFull() {
         if (!sourceBuffer || sourceBuffer.buffered.length === 0) { return; }
-        if (audioEl.currentTime <= 0) { return; }
         while (true) {
           const ahead = sourceBuffer.buffered.end(sourceBuffer.buffered.length - 1) - audioEl.currentTime;
           if (ahead <= BUFFER_AHEAD_SECS) { return; }
           await new Promise((resolve) => {
-            audioEl.addEventListener('timeupdate', resolve, { once: true });
-            signal.addEventListener('abort', resolve, { once: true });
+            const done = () => {
+              audioEl.removeEventListener('timeupdate', done);
+              audioEl.removeEventListener('playing', done);
+              signal.removeEventListener('abort', done);
+              resolve();
+            };
+            audioEl.addEventListener('timeupdate', done);
+            audioEl.addEventListener('playing', done);
+            signal.addEventListener('abort', done);
           });
           signal.throwIfAborted();
         }
