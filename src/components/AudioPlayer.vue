@@ -203,7 +203,7 @@ watch(songIndex, async (val) => {
       buffering.value = true;
       songDuration.value = 0;
 
-      const playerMeta = { title: song.title, artist: song.artist ?? '', album: song.album ?? '' };
+      const playerMeta = { title: song.title, artist: song.artist ?? '', album: song.album ?? '', album_id: song.album_id };
 
       // fire-and-forget: streamer.load below resolves near the END of the song
       // (backpressure keeps ~30s buffered ahead), so the notification must not wait for it
@@ -227,7 +227,7 @@ watch(songIndex, async (val) => {
         const nextSong = playlistStore.playList[val + 1];
         // bail if songIndex changed meanwhile (user skipped song)
         if (songIndex.value !== val || !nextSong?.song_id) { return; }
-        const nextMeta = { title: nextSong.title, artist: nextSong.artist ?? '', album: nextSong.album ?? '' };
+        const nextMeta = { title: nextSong.title, artist: nextSong.artist ?? '', album: nextSong.album ?? '', album_id: nextSong.album_id };
         feeder.prefetch(nextSong.song_id, nextMeta).catch((err) => {
           logger.log('audioplayer: prefetch next failed', err);
         });

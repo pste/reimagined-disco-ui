@@ -29,7 +29,10 @@ function gotoArtistAlbum(album_id) {
                     :album_id="item.album_id"
                     :artist="item.year ? `${item.year}` : ''"
                     :title="item.title"
+                    :favorite="item.favorite"
+                    favoritable
                     @click="gotoArtistAlbum(item.album_id)"
+                    @toggle-favorite="collectionStore.toggleFavorite(item.album_id)"
                 >
                 </MiniDisc>
             </template>

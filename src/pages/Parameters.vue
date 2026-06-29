@@ -7,7 +7,7 @@ import useParametersStore from '@/stores/parameters'
 const API = inject('API');
 const errorsStore = useErrorsStore();
 const parametersStore = useParametersStore();
-const { cronRequeue, cacheTTLDays } = storeToRefs(parametersStore);
+const { cronRequeue, cacheTTLDays, favCacheTTLDays } = storeToRefs(parametersStore);
 
 // data
 const sources = ref([]);
@@ -86,6 +86,11 @@ onMounted(async () => {
                     <IftaLabel>
                         <InputNumber id="numCacheTTL" v-model="cacheTTLDays" :min="1" :max="365" fluid />
                         <label for="numCacheTTL">Durata cache (giorni)</label>
+                    </IftaLabel>
+
+                    <IftaLabel>
+                        <InputNumber id="numFavCacheTTL" v-model="favCacheTTLDays" :min="1" :max="365" fluid />
+                        <label for="numFavCacheTTL">Durata cache preferiti (giorni)</label>
                     </IftaLabel>
 
                     <div class="flex justify-content-end">

@@ -176,6 +176,15 @@ onUnmounted(() => {
                     </a>
                 </template>
             </Menu>
+            <!-- Favorites filter -->
+            <Button
+                :icon="collectionStore.favoritesOnly ? 'pi pi-star-fill' : 'pi pi-star'"
+                @click="collectionStore.favoritesOnly = !collectionStore.favoritesOnly"
+                class="mr-2"
+                text
+                :severity="collectionStore.favoritesOnly ? 'warn' : 'secondary'"
+                aria-label="Mostra solo i preferiti"
+            />
             <!---->
             <div class="search-container">
                 <InputText

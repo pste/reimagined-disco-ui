@@ -3,6 +3,8 @@ import { inject, ref, computed, watch } from 'vue';
 import logger from '@/plugins/logger'
 import useSessionStore from '@/stores/session'
 import useLoadingStore from '@/stores/loading'
+import useCacheStore from '@/stores/cache'
+import useParametersStore from '@/stores/parameters'
 
 // using a "setup store" to handle circular reference between API and store
 const useCollectionStore = defineStore('collection', () => {
@@ -12,7 +14,10 @@ const useCollectionStore = defineStore('collection', () => {
     const sortCollectionDirection = computed(() => session.user.preferences.sortCollectionDirection);
     //
     const API = inject('API');
+    const cacheStore = useCacheStore();
+    const parametersStore = useParametersStore();
     const items = ref([]);
+    const favoritesOnly = ref(false); // toggle "mostra solo i preferiti" (toolbar)
     const filter = ref({
         global: '', // global search (from toolbar)
         name: '',
@@ -20,9 +25,10 @@ const useCollectionStore = defineStore('collection', () => {
     });
     const filteredData = computed(() => {
         const flt = filter.value.global.toLowerCase();
-        return items.value.filter( el => 
-            el.name.toLowerCase().indexOf(flt) >= 0 || 
-            el.title.toLowerCase().indexOf(flt) >= 0 );
+        return items.value.filter( el =>
+            (!favoritesOnly.value || el.favorite) &&
+            (el.name.toLowerCase().indexOf(flt) >= 0 ||
+             el.title.toLowerCase().indexOf(flt) >= 0) );
     });
 
     // re-sort on sortBy param change
@@ -112,6 +118,31 @@ const useCollectionStore = defineStore('collection', () => {
         updateAlbum: function(album_id, patch) {
             const item = items.value.find(el => el.album_id == album_id);
             if (item) { Object.assign(item, patch); }
+        },
+        // the toolbar toggle "show only favorites"
+        favoritesOnly,
+        // actions: toggle preferito su un album (per utente). Update ottimistico + persistenza;
+        // al toggle-ON rinnova subito il TTL dei chunk già in cache dell'album col TTL preferiti
+        toggleFavorite: async function(album_id) {
+            const item = items.value.find(el => el.album_id == album_id);
+            if (!item) {
+                logger.error(`collection: toggleFavorite album ${album_id} not found!`);
+                return;
+            }
+            const next = !item.favorite;
+            item.favorite = next; // ottimistico
+            try {
+                await API.post('/favorite', { album_id: item.album_id, favorite: next });
+                if (next) {
+                    await parametersStore.load();
+                    const ttlMs = parametersStore.favCacheTTLDays * 24 * 60 * 60 * 1000;
+                    await cacheStore.retagAlbumTTL(Number(album_id), ttlMs);
+                }
+            }
+            catch (err) {
+                item.favorite = !next; // rollback
+                logger.error('collection: toggleFavorite failed', err);
+            }
         },
         // actions: load and caches the whole collection
         load: async function() {

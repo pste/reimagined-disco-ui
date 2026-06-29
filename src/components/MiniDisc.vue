@@ -9,7 +9,11 @@ const props = defineProps({
     album_id: Number,
     artist: String,
     title: String,
+    favorite: Boolean,        // stato preferito dell'album
+    favoritable: Boolean,     // se true mostra la stella (toggle preferito)
 });
+
+const emit = defineEmits(['toggle-favorite']);
 
 const image = ref(null);
 const cardEl = useTemplateRef('card');
@@ -69,10 +73,23 @@ onUnmounted(() => {
 
 <template>
     <div ref="card" class="flex flex-column surface-card border-round shadow-2 minidisc-card p-1 surface-border">
-        <div 
-            :style="{backgroundImage: `url('${image}')`}"
-            class="cover w-full border-round mb-2 bg-gray-100"
-        ></div><!-- v-tooltip.bottom="{ value: title, disabled: (title)?false:true}" -->
+        <div class="cover-wrap mb-2">
+            <div
+                :style="{backgroundImage: `url('${image}')`}"
+                class="cover w-full border-round bg-gray-100"
+            ></div><!-- v-tooltip.bottom="{ value: title, disabled: (title)?false:true}" -->
+            <Button
+                v-if="favoritable"
+                :icon="favorite ? 'pi pi-star-fill' : 'pi pi-star'"
+                rounded
+                text
+                size="small"
+                class="fav-btn"
+                :class="{ 'fav-on': favorite }"
+                @click.stop="emit('toggle-favorite')"
+                :aria-label="favorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'"
+            />
+        </div>
         <div class="flex flex-column">
             <span class="font-bold text-sm text-400 cover-text">
                 {{ artist }}
@@ -95,12 +112,27 @@ onUnmounted(() => {
     }
 }
 
+.cover-wrap {
+    position: relative;
+}
 .cover {
     background-position: center;
     background-repeat: no-repeat;
     background-size: cover;
     width: 100%;
     aspect-ratio: 1 / 1;
+}
+.fav-btn {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.25rem;
+    width: 2rem;
+    height: 2rem;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.35);
+}
+.fav-btn.fav-on {
+    color: var(--yellow-400, #fbbf24);
 }
 .cover-text {
     text-overflow: ellipsis;

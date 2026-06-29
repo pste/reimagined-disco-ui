@@ -89,6 +89,22 @@ const useCacheStore = defineStore('cache', () => {
         }
     }
 
+    // riscrive il TTL di TUTTI i chunk in cache di un album (al toggle-ON del preferito):
+    // idxDB.get rinnova expiresAt usando il ttlMs SALVATO nel record, quindi il TTL lungo
+    // va materializzato nel record (non basta toccarlo). I record cachati prima della feature
+    // non hanno album_id e restano col TTL standard (accettabile). Non cambia la Map reattiva.
+    async function retagAlbumTTL(album_id, ttlMs) {
+        const records = await idxDB.getAll(CACHE_TABLE_CHUNKS);
+        const now = Date.now();
+        for (const record of records) {
+            if (record.data?.album_id === album_id) {
+                const data = { ...record.data, ttlMs, expiresAt: now + ttlMs };
+                await idxDB.put(CACHE_TABLE_CHUNKS, record.id, data);
+            }
+        }
+        logger.log(`cache: retagged TTL for album=${album_id}`);
+    }
+
     // build the key for a song's chunk
     function cacheKey(songId, chunkId) {
         return `${songId}_${chunkId}`;
@@ -144,6 +160,7 @@ const useCacheStore = defineStore('cache', () => {
         sweep,
         cacheKey,
         touchSong,
+        retagAlbumTTL,
         //
         cachedSongIds,
         downloadingSongIds,

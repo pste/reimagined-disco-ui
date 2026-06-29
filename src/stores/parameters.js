@@ -6,6 +6,7 @@ const useParametersStore = defineStore('parameters', () => {
 
     const cronRequeue = ref('');
     const cacheTTLDays = ref(7);
+    const favCacheTTLDays = ref(30);
     const _loaded = ref(false);
 
     async function load() {
@@ -14,6 +15,7 @@ const useParametersStore = defineStore('parameters', () => {
         if (data?.length > 0) {
             cronRequeue.value = data[0].cronRequeue ?? '';
             cacheTTLDays.value = data[0].cacheTTLDays ?? 7;
+            favCacheTTLDays.value = data[0].favCacheTTLDays ?? 30;
         }
         _loaded.value = true;
     }
@@ -22,10 +24,11 @@ const useParametersStore = defineStore('parameters', () => {
         await API.post('/parameters', {
             cronRequeue: cronRequeue.value,
             cacheTTLDays: cacheTTLDays.value,
+            favCacheTTLDays: favCacheTTLDays.value,
         });
     }
 
-    return { cronRequeue, cacheTTLDays, load, save };
+    return { cronRequeue, cacheTTLDays, favCacheTTLDays, load, save };
 });
 
 export default useParametersStore;

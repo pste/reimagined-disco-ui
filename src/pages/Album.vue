@@ -116,7 +116,7 @@ async function cacheAlbum() {
     cacheProgress.value = 0;
     try {
         for (const song of albumSongs.value) {
-            const meta = { title: song.title, artist: song.artist ?? '', album: song.album ?? '' };
+            const meta = { title: song.title, artist: song.artist ?? '', album: song.album ?? '', album_id: song.album_id };
             // un brano fallito non blocca i successivi (l'errore è già mostrato dal client API)
             await feeder.prefetch(song.song_id, meta).catch(() => {});
             cacheProgress.value++;
@@ -161,7 +161,7 @@ onMounted(async() => {
   // warm the cache for the first track as soon as the album is opened
   const firstSong = albumSongs.value[0];
   if (firstSong) {
-    const meta = { title: firstSong.title, artist: firstSong.artist ?? '', album: firstSong.album ?? '' };
+    const meta = { title: firstSong.title, artist: firstSong.artist ?? '', album: firstSong.album ?? '', album_id: firstSong.album_id };
     feeder.prefetch(firstSong.song_id, meta).catch(() => {});
   }
 })
@@ -217,6 +217,14 @@ onUnmounted(() => {
                                 aria-label="Scarica album in cache"
                             />
                             <span v-if="caching" class="text-sm text-color-secondary">{{ cacheProgress }}/{{ albumSongs.length }}</span>
+                            <Button
+                                :icon="album?.favorite ? 'pi pi-star-fill' : 'pi pi-star'"
+                                rounded
+                                text
+                                :severity="album?.favorite ? 'warn' : 'secondary'"
+                                @click="collectionStore.toggleFavorite(route.params.albumid)"
+                                :aria-label="album?.favorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'"
+                            />
                         </div>
                         <div class="text-color-secondary mb-3">{{ album?.name }}</div>
                         

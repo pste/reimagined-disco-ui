@@ -2,6 +2,7 @@ import { inject } from 'vue'
 import logger from '@/plugins/logger'
 import useParametersStore from '@/stores/parameters'
 import useCacheStore from '@/stores/cache'
+import useCollectionStore from '@/stores/collection'
 
 //
 const CACHE_TABLE = 'chunks';
@@ -25,6 +26,7 @@ export function useCacheFeeder() {
     const API = inject('API');
     const cacheStore = useCacheStore();
     const parametersStore = useParametersStore();
+    const collectionStore = useCollectionStore();
 
     // Returns { blob, songMeta } — songMeta is populated for chunk 1 (from network or IDB)
     async function getChunk(songId, chunkId, playerMeta) {
@@ -52,9 +54,14 @@ export function useCacheFeeder() {
                 logger.log(`cacheFeeder: fetched song=${songId} chunk=${chunkId} size=${size}`);
                 if (blob && size > 0) {
                     await parametersStore.load();
-                    const ttlMs = parametersStore.cacheTTLDays * 24 * 60 * 60 * 1000;
+                    // i brani di un album preferito hanno un TTL cache più ampio
+                    const album_id = playerMeta?.album_id;
+                    const favorite = album_id != null && collectionStore.getAlbum(album_id)?.favorite;
+                    const days = favorite ? parametersStore.favCacheTTLDays : parametersStore.cacheTTLDays;
+                    const ttlMs = days * 24 * 60 * 60 * 1000;
                     const record = { blob, songId, chunkId, expiresAt: Date.now() + ttlMs, ttlMs };
                     if (playerMeta) { record.meta = playerMeta; }
+                    if (playerMeta?.album_id != null) { record.album_id = playerMeta.album_id; }
                     if (songMeta) { record.songMeta = songMeta; }
                     await cacheStore.put(CACHE_TABLE, key, record);
                 }
