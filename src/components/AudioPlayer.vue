@@ -45,12 +45,13 @@ const buffering = ref(false); // true while initial load or mid-playback stall
 // a defaultPlaybackRate a ogni nuovo caricamento)
 const RATE_MIN = 0.5;
 const RATE_MAX = 2.0;
-const RATE_STEP = 0.1;
+const RATE_STEP = 0.05;
 const playbackRate = ref(1);
 const showTools = ref(false); // riga strumenti (rate, e in futuro bookmark) a scomparsa
-const rateText = computed(() => `${playbackRate.value.toFixed(1)}×`);
+const rateText = computed(() => `${playbackRate.value.toFixed(2)}×`); // 2 decimali: passo da 0.05
+// arrotonda al multiplo di RATE_STEP (0.05): evita derive float tipo 1.1500000000000001
 function clampRate(r) {
-  return Math.min(RATE_MAX, Math.max(RATE_MIN, Math.round(r * 10) / 10));
+  return Math.min(RATE_MAX, Math.max(RATE_MIN, Math.round(r / RATE_STEP) * RATE_STEP));
 }
 function decRate() { playbackRate.value = clampRate(playbackRate.value - RATE_STEP); }
 function incRate() { playbackRate.value = clampRate(playbackRate.value + RATE_STEP); }
