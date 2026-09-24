@@ -78,10 +78,12 @@ function scrollToBottom() {
 
 <template>
     <div class="collection-grid w-full px-4 py-6">
-        <!-- tutte le tile (a blocchi), il filtro le NASCONDE: toglierlo non ricrea niente -->
+        <!-- tutte le tile (a blocchi), il filtro le NASCONDE: toglierlo non ricrea niente.
+             Classe e non v-show: la radice di MiniDisc ha la classe PrimeFlex `flex`
+             (display:flex !important), che vince sul display:none inline di v-show -->
         <template v-for="item in renderedItems" :key="item.album_id">
             <MiniDisc
-                v-show="collectionStore.filteredIds.has(item.album_id)"
+                :class="{ 'filtered-out': !collectionStore.filteredIds.has(item.album_id) }"
                 class="clickable"
                 :album_id="item.album_id"
                 :artist="item.name"
@@ -121,6 +123,12 @@ function scrollToBottom() {
 }
 
 /* .collection-grid è globale in style.css (condivisa con Artists/Artist) */
+
+/* tile esclusa dal filtro. Lo scope aggiunge un attributo alla selezione (.filtered-out[data-v-…]):
+   specificità maggiore di .flex di PrimeFlex, quindi a parità di !important vince questa */
+.filtered-out {
+    display: none !important;
+}
 
 .list {
     display: inline-block;
