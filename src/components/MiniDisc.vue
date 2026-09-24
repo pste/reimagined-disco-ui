@@ -18,7 +18,6 @@ const emit = defineEmits(['toggle-favorite']);
 const image = ref(null);
 const cardEl = useTemplateRef('card');
 let observer = null;
-let deferredTimer = null;
 
 async function loadImage() {
     const id = props?.album_id;
@@ -31,6 +30,10 @@ async function loadImage() {
     }
 }
 
+// la cover si carica solo quando la tile sta per entrare nello schermo: le richieste
+// arrivano allo store in ordine di visibilità (priorità alta). Niente più "carica tutto
+// dopo 1s": riempiva la coda con tutta la collezione, e le cover visibili scorrendo
+// finivano in fondo. Il resto lo scarica lo store in background (prefetchAll)
 function scheduleLoad() {
     observer = new IntersectionObserver((entries) => {
         if (entries[0].isIntersecting) {
@@ -39,19 +42,11 @@ function scheduleLoad() {
         }
     }, { rootMargin: '200px' }); // preload leggermente prima di entrare nel viewport
     observer.observe(cardEl.value);
-
-    // carica il resto dopo che i visibili hanno avuto la precedenza
-    deferredTimer = setTimeout(() => {
-        teardown();
-        loadImage();
-    }, 1000);
 }
 
 function teardown() {
     observer?.disconnect();
     observer = null;
-    clearTimeout(deferredTimer);
-    deferredTimer = null;
 }
 
 onMounted(() => scheduleLoad());

@@ -23,6 +23,35 @@ const useCollectionStore = defineStore('collection', () => {
         name: '',
         title: ''
     });
+    // lista album salvata in localStorage (per utente: preferiti e ascolti sono personali):
+    // all'apertura si mostra subito questa, intanto load() la aggiorna dal server
+    // (stale-while-revalidate). ~1900 album ≈ 0,5 MB: sta nel limite di localStorage;
+    // se non ci sta (o lo storage è bloccato) si va avanti senza cache
+    function cacheKey() {
+        return `collection:${session.user.name}`;
+    }
+    function saveCache() {
+        try {
+            localStorage.setItem(cacheKey(), JSON.stringify(items.value));
+        }
+        catch (err) {
+            logger.log('collection: cache not saved', err);
+        }
+    }
+    function restoreCache() {
+        try {
+            const raw = localStorage.getItem(cacheKey());
+            const cached = raw ? JSON.parse(raw) : null;
+            if (Array.isArray(cached) && cached.length > 0) {
+                items.value = cached;
+                sortCollection();
+            }
+        }
+        catch (err) {
+            logger.log('collection: cache not restored', err);
+        }
+    }
+
     const filteredData = computed(() => {
         const flt = filter.value.global.toLowerCase();
         return items.value.filter( el =>
@@ -58,7 +87,14 @@ const useCollectionStore = defineStore('collection', () => {
         sortCollection();
     })
 
+    // album che passano il filtro: la griglia della Collection li usa per NASCONDERE le
+    // tile escluse (v-show) invece di distruggerle, così togliere il filtro non ricrea niente
+    const filteredIds = computed(() => new Set(filteredData.value.map((el) => el.album_id)));
+
     return {
+        // all the albums, sorted (the Collection grid renders these and hides the filtered out)
+        items,
+        filteredIds,
         // the filter (can be empty to see everyting)
         filter,
         // getter: the filtered collection
@@ -117,7 +153,10 @@ const useCollectionStore = defineStore('collection', () => {
         },
         updateAlbum: function(album_id, patch) {
             const item = items.value.find(el => el.album_id == album_id);
-            if (item) { Object.assign(item, patch); }
+            if (item) {
+                Object.assign(item, patch);
+                saveCache();
+            }
         },
         // the toolbar toggle "show only favorites"
         favoritesOnly,
@@ -138,6 +177,7 @@ const useCollectionStore = defineStore('collection', () => {
                     item.favorite = !next;
                     return;
                 }
+                saveCache();
                 if (next) {
                     await parametersStore.load();
                     const ttlMs = parametersStore.favCacheTTLDays * 24 * 60 * 60 * 1000;
@@ -151,6 +191,10 @@ const useCollectionStore = defineStore('collection', () => {
         },
         // actions: load and caches the whole collection
         load: async function() {
+            // prima apertura della sessione: subito la lista salvata, poi quella del server
+            if (items.value.length === 0) {
+                restoreCache();
+            }
             loadingStore.start();
             try {
                 // su errore l'API client mostra il toast e restituisce undefined:
@@ -159,6 +203,7 @@ const useCollectionStore = defineStore('collection', () => {
                 if (data) {
                     items.value = data;
                     sortCollection();
+                    saveCache();
                 }
             }
             finally {

@@ -136,6 +136,23 @@ async function getAll(tableName) {
     });
 }
 
+// tutte le chiavi di una tabella (readonly, niente touch del TTL): una sola transazione
+// invece di una get per record, es. per sapere quali cover sono già in cache
+async function getAllKeys(tableName) {
+    await ready;
+    return new Promise((resolve, reject) => {
+        const req = db
+            .transaction([tableName], "readonly")
+            .objectStore(tableName)
+            .getAllKeys();
+        req.onsuccess = (event) => resolve(event.target.result);
+        req.onerror = (event) => {
+            logger.error("idxDB getAllKeys error:", event);
+            reject(event);
+        };
+    });
+}
+
 //
 async function remove(tableName, id) {
     await ready;
@@ -193,6 +210,7 @@ function createDB() {
         put: upsert,
         sweep: sweepExpired,
         getAll: getAll,
+        getAllKeys: getAllKeys,
         remove: remove,
     }
 }

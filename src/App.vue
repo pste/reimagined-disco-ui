@@ -36,7 +36,13 @@ onMounted(async () => {
     </header>
     <template v-if="!session.isVerifying">
         <div class="page-content w-full flex flex-column align-items-center">
-            <RouterView />
+            <!-- la Collection resta viva quando si apre un album: tornando indietro le ~1900
+                 tile (e le cover già caricate) sono ancora lì, senza ridisegnare niente -->
+            <RouterView v-slot="{ Component }">
+                <KeepAlive include="Collection">
+                    <component :is="Component" />
+                </KeepAlive>
+            </RouterView>
         </div>
         <AudioPlayer />
     </template>

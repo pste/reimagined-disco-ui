@@ -1,11 +1,66 @@
 <script setup>
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import MiniDisc from '@/components/MiniDisc.vue'
 import useCollectionStore from '@/stores/collection'
+import useCoversStore from '@/stores/covers'
 
 //
 const router = useRouter();
 const collectionStore = useCollectionStore();
+const coversStore = useCoversStore();
+
+// rendering progressivo: ~1900 tile tutte insieme bloccavano la pagina prima di mostrare
+// qualcosa. Le prime FIRST_BATCH subito, le altre a blocchi nei momenti liberi del browser
+const FIRST_BATCH = 60;
+const BATCH = 150;
+const renderCount = ref(FIRST_BATCH);
+const renderedItems = computed(() => collectionStore.items.slice(0, renderCount.value));
+let idleHandle = null;
+
+function whenIdle(callback) {
+    if ('requestIdleCallback' in window) {
+        return requestIdleCallback(callback, { timeout: 200 });
+    }
+    return setTimeout(callback, 16);
+}
+
+function cancelIdle(handle) {
+    if ('cancelIdleCallback' in window) {
+        cancelIdleCallback(handle);
+    }
+    else {
+        clearTimeout(handle);
+    }
+}
+
+function renderMore() {
+    if (idleHandle !== null) {
+        return;
+    }
+    idleHandle = whenIdle(() => {
+        idleHandle = null;
+        if (renderCount.value < collectionStore.items.length) {
+            renderCount.value += BATCH;
+            renderMore();
+        }
+    });
+}
+
+// riparte quando arriva (o cresce) la lista: dalla cache locale o dal server.
+// Lo stesso momento avvia lo scaricamento in background delle cover mancanti
+watch(() => collectionStore.items.length, (length) => {
+    renderMore();
+    if (length > 0) {
+        coversStore.prefetchAll(collectionStore.items.map((el) => el.album_id));
+    }
+}, { immediate: true });
+
+onUnmounted(() => {
+    if (idleHandle !== null) {
+        cancelIdle(idleHandle);
+    }
+});
 
 // methods
 function gotoArtistAlbum(album_id) {
@@ -23,8 +78,10 @@ function scrollToBottom() {
 
 <template>
     <div class="collection-grid w-full px-4 py-6">
-        <template v-for="(item, index) in collectionStore.filteredData" :key="item.album_id">
+        <!-- tutte le tile (a blocchi), il filtro le NASCONDE: toglierlo non ricrea niente -->
+        <template v-for="item in renderedItems" :key="item.album_id">
             <MiniDisc
+                v-show="collectionStore.filteredIds.has(item.album_id)"
                 class="clickable"
                 :album_id="item.album_id"
                 :artist="item.name"

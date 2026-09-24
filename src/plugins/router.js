@@ -13,6 +13,14 @@ import ArtistView from '../pages/Artist.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+  // indietro/avanti: torna alla posizione salvata (con la Collection in KeepAlive la griglia
+  // è ancora lì, quindi si ritrova il punto in cui si era); nuove pagine partono dall'alto
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) {
+      return savedPosition;
+    }
+    return { top: 0 };
+  },
   routes: [
     {
       path: '/',
