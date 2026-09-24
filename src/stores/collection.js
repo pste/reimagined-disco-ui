@@ -151,6 +151,20 @@ const useCollectionStore = defineStore('collection', () => {
                 return null;
             }
         },
+        // un brano dell'album è partito: aggiorna "ultimo ascolto" in locale (played arriva
+        // dal server, stesso formato del resto della lista) e riordina se la vista è per
+        // "played". Senza, la lista restava ferma finché non si ricaricava dal server
+        markPlayed: function(album_id, played) {
+            const item = items.value.find(el => el.album_id == album_id);
+            if (!item) {
+                return;
+            }
+            item.played = played;
+            if (session.user.preferences.sortCollectionBy === 'played') {
+                sortCollection();
+            }
+            saveCache();
+        },
         updateAlbum: function(album_id, patch) {
             const item = items.value.find(el => el.album_id == album_id);
             if (item) {

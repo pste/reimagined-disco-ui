@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import usePlaylistStore from '@/stores/playlist'
 import useCoversStore from '@/stores/covers'
 import useCacheStore from '@/stores/cache'
+import useCollectionStore from '@/stores/collection'
 import { useStreamedAudio } from '@/composables/useStreamedAudio'
 import { useCacheFeeder } from '@/composables/useCacheFeeder'
 import logger from '@/plugins/logger'
@@ -16,6 +17,7 @@ const router = useRouter();
 const playlistStore = usePlaylistStore();
 const coversStore = useCoversStore();
 const cacheStore = useCacheStore();
+const collectionStore = useCollectionStore();
 
 // streamed audio (MSE, chunks pulled via the cache feeder)
 const streamer = useStreamedAudio();
@@ -255,7 +257,14 @@ watch(songIndex, async (val) => {
       // se il brano viene cambiato a metà
       cacheStore.touchSong(song_id).catch(() => {});
 
-      API.post('/stream/song', { song_id });
+      // registra l'ascolto; la risposta (riga user_stats) porta il nuovo "played" con cui
+      // si aggiorna subito la Collection ordinata per ultimo ascolto
+      API.post('/stream/song', { song_id }).then((rows) => {
+        const played = rows?.[0]?.played;
+        if (played) {
+          collectionStore.markPlayed(song.album_id, played);
+        }
+      });
       // start playing as soon as the browser has enough data buffered (before full load)
       // so trimBuffer can work during the loading phase and prevent MSE quota overflow
       const earlyPlay = () => { buffering.value = false; if (isPlaying.value) { music.play(); } };
