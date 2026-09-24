@@ -57,6 +57,75 @@ function decRate() { playbackRate.value = clampRate(playbackRate.value - RATE_ST
 function incRate() { playbackRate.value = clampRate(playbackRate.value + RATE_STEP); }
 function resetRate() { playbackRate.value = 1; }
 
+// loop A-B (solo sessione, si azzera cambiando brano): A = inizio, B = fine. Premendo B
+// si salta subito ad A e il loop parte. Il salto B→A lo fa un timer ricalcolato a ogni
+// timeupdate (preciso, e i timer non vengono rallentati nelle pagine che riproducono audio,
+// anche in background / car-player); requestAnimationFrame invece si ferma a schermo spento
+const loopA = ref(null); // secondi, null = non impostato
+const loopB = ref(null);
+const loopActive = computed(() => loopA.value !== null && loopB.value !== null);
+const loopText = computed(() => loopActive.value ? `${secsToTime(loopA.value)}–${secsToTime(loopB.value)}` : '');
+// oltre questa durata il loop funziona lo stesso, ma senza tenere tutto nel buffer MSE
+// (rischio QuotaExceededError): il salto B→A ricarica i dati, con una breve pausa
+const LOOP_KEEP_MAX_SECS = 180;
+let loopTimer = null;
+
+function setLoopA() {
+  const t = audioElement.value.currentTime;
+  loopA.value = t;
+  if (loopB.value !== null && loopB.value <= t) {
+    loopB.value = null; // B prima del nuovo A: non ha più senso
+  }
+  updateLoop();
+}
+
+function setLoopB() {
+  const t = audioElement.value.currentTime;
+  const a = loopA.value ?? 0; // B senza A: loop dall'inizio del brano
+  if (t <= a) {
+    return;
+  }
+  loopA.value = a;
+  loopB.value = t;
+  updateLoop();
+  audioElement.value.currentTime = a; // il loop parte subito
+}
+
+function clearLoop() {
+  loopA.value = null;
+  loopB.value = null;
+  updateLoop();
+}
+
+// da chiamare a ogni cambio di A/B: buffer da tenere nello streamer + timer del salto
+function updateLoop() {
+  const keep = loopActive.value && (loopB.value - loopA.value) <= LOOP_KEEP_MAX_SECS;
+  streamer.setKeepFrom(keep ? loopA.value : null);
+  scheduleLoopJump();
+}
+
+function scheduleLoopJump() {
+  clearTimeout(loopTimer);
+  loopTimer = null;
+  const el = audioElement.value;
+  if (!loopActive.value || !el || el.paused) {
+    return;
+  }
+  const t = el.currentTime;
+  if (t > loopB.value + 0.5) {
+    return; // l'utente è andato oltre B con un seek: il loop non lo riporta indietro
+  }
+  const ms = Math.max(0, ((loopB.value - t) / el.playbackRate) * 1000);
+  loopTimer = setTimeout(() => {
+    if (loopActive.value && el.currentTime >= loopB.value - 0.02) {
+      el.currentTime = loopA.value;
+    }
+    else {
+      scheduleLoopJump(); // non ancora a B (es. buffering): ricalcola
+    }
+  }, ms);
+}
+
 // formatting utils 
 function padTime(time) {
   return (time<10) ? `0${time}`:`${time}`
@@ -176,11 +245,16 @@ onMounted(() => {
   audioElement.value.addEventListener('play',  () => {
     isPlaying.value = true;
     if ('mediaSession' in navigator) { navigator.mediaSession.playbackState = 'playing'; }
+    scheduleLoopJump();
   });
   audioElement.value.addEventListener('pause', () => {
     isPlaying.value = false;
     if ('mediaSession' in navigator) { navigator.mediaSession.playbackState = 'paused'; }
+    scheduleLoopJump(); // in pausa: cancella il timer del loop
   });
+  // loop A-B: ricalcola il salto dopo un seek e se cambia la velocità
+  audioElement.value.addEventListener('seeked', scheduleLoopJump);
+  audioElement.value.addEventListener('ratechange', scheduleLoopJump);
 
   audioElement.value.addEventListener('timeupdate', function() {
     const val = audioElement.value.currentTime || 0;
@@ -188,6 +262,10 @@ onMounted(() => {
     // updates the slider when not dragging
     if (manualSeek.value === false) {
       sliderTime.value = val;
+    }
+    // loop A-B: il timer del salto si ricalcola sul tempo aggiornato
+    if (loopActive.value) {
+      scheduleLoopJump();
     }
     // progress bar in the Android notification
     if ('mediaSession' in navigator && songDuration.value > 0) {
@@ -232,6 +310,7 @@ async function updateMediaSession(song, val) {
 
 // watch
 watch(songIndex, async (val) => {
+    clearLoop(); // il loop A-B vale per il brano su cui è stato creato
     if (coverObjectURL) {
       URL.revokeObjectURL(coverObjectURL);
       coverObjectURL = null;
@@ -394,12 +473,20 @@ function skipForward() {
         </div>
         <!-- tools row: playback rate (e in futuro bookmark sul brano), sotto al titolo, a scomparsa -->
         <div v-show="showTools" class="player-tools-row">
+          <!-- loop A-B: A = inizio, B = fine (premendo B il loop parte), × = toglie il loop -->
+          <div class="tool-group loop-group">
+            <Button class="loop-btn" label="A" @click="setLoopA" :severity="loopA !== null ? 'primary' : 'secondary'" rounded text title="Inizio loop (punto attuale)" aria-label="inizio loop" />
+            <Button class="loop-btn" label="B" @click="setLoopB" :severity="loopB !== null ? 'primary' : 'secondary'" rounded text title="Fine loop (punto attuale): il loop parte" aria-label="fine loop" />
+            <Button v-if="loopA !== null || loopB !== null" class="rate-btn" icon="pi pi-times" @click="clearLoop" severity="secondary" rounded text title="Togli il loop" aria-label="togli loop" />
+            <span v-if="loopActive" class="loop-label">{{ loopText }}</span>
+          </div>
+          <!-- TODO: bookmark del brano qui -->
+          <!-- velocità: in fondo alla riga, allineata a destra -->
           <div class="tool-group rate-group">
             <Button class="rate-btn" icon="pi pi-minus" @click="decRate" :disabled="playbackRate <= RATE_MIN" severity="secondary" rounded text aria-label="rallenta" />
             <Button class="rate-label" :label="rateText" @click="resetRate" severity="secondary" rounded text title="Velocità di riproduzione (click per 1×)" aria-label="velocità normale" />
             <Button class="rate-btn" icon="pi pi-plus" @click="incRate" :disabled="playbackRate >= RATE_MAX" severity="secondary" rounded text aria-label="velocizza" />
           </div>
-          <!-- TODO: bookmark del brano qui -->
         </div>
         <div class="player-layout">
           <!-- home -->
@@ -521,8 +608,10 @@ function skipForward() {
 /* tools row: playback rate (bookmark del brano in futuro), sotto al titolo */
 .player-tools-row {
   display: flex;
+  flex-wrap: wrap; /* velocità + loop A-B: su un telefono stretto vanno a capo */
   align-items: center;
-  gap: 0.5rem;
+  column-gap: 1.25rem;
+  row-gap: 0.25rem;
   width: 100%;
   padding: 0.1rem 0.5rem 0;
 }
@@ -530,6 +619,10 @@ function skipForward() {
   display: flex;
   align-items: center;
   gap: 0.25rem;
+}
+/* loop a sinistra, velocità spinta a destra (anche quando va a capo su mobile) */
+.rate-group {
+  margin-left: auto;
 }
 /* label della velocità: è un Button (raggiungibile da tastiera), largo quanto il testo */
 .player-tools-row :deep(.rate-label.p-button) {
@@ -544,9 +637,20 @@ function skipForward() {
 }
 /* i pulsanti della riga strumenti restano compatti (controlli secondari),
    anche su mobile: la specificità maggiore vince sul media query globale */
-.player-tools-row :deep(.rate-btn.p-button) {
+.player-tools-row :deep(.rate-btn.p-button),
+.player-tools-row :deep(.loop-btn.p-button) {
   width: 2.5rem;
   height: 2.5rem;
+}
+/* A / B: lettere al posto dell'icona, stessa misura dei pulsanti della velocità */
+.player-tools-row :deep(.loop-btn .p-button-label) {
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+.loop-label {
+  font-size: 0.8rem;
+  opacity: 0.85;
+  white-space: nowrap;
 }
 .player-tools-row :deep(.rate-btn .p-button-icon) {
   font-size: 0.9rem;
@@ -593,7 +697,8 @@ function skipForward() {
   }
 
   /* la riga strumenti resta compatta anche col bump mobile */
-  .player-tools-row :deep(.rate-btn.p-button) {
+  .player-tools-row :deep(.rate-btn.p-button),
+  .player-tools-row :deep(.loop-btn.p-button) {
     width: 2.75rem;
     height: 2.75rem;
   }

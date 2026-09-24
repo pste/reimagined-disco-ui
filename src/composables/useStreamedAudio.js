@@ -33,6 +33,13 @@ export function useStreamedAudio() {
   let currentObjectURL = null; // the audioElement refers to this always changing URL
   let abortController = null;
   let removeSeekListener = null; // unhook del listener 'seeking' del load corrente
+  // loop A-B: trimBuffer non rimuove i dati da qui in poi (secondi), così il salto B→A
+  // cade nel buffered e lo gestisce il browser (niente seekTo, niente pausa). null = off
+  let keepFrom = null;
+
+  function setKeepFrom(seconds) {
+    keepFrom = seconds;
+  }
 
   // on stop we clean
   function revokeCurrentURL() {
@@ -65,6 +72,7 @@ export function useStreamedAudio() {
   async function load(audioEl, songId, playerMeta) {
     // clear before start (again)
     stop();
+    keepFrom = null; // un loop A-B vale solo per il brano su cui è stato creato
 
     // init
     const ac = new AbortController(); // every load creates an AbortController
@@ -173,7 +181,10 @@ export function useStreamedAudio() {
           return;
         }
         const start = sourceBuffer.buffered.start(0);
-        const safeEnd = audioEl.currentTime - 10;
+        let safeEnd = audioEl.currentTime - 10;
+        if (keepFrom !== null) {
+          safeEnd = Math.min(safeEnd, keepFrom - 1); // loop A-B: tieni i dati da A in poi
+        }
         if (safeEnd <= start + 1) {
           return;
         }
@@ -414,5 +425,5 @@ export function useStreamedAudio() {
     }
   }
 
-  return { load, stop, sweep, loading, error };
+  return { load, stop, sweep, setKeepFrom, loading, error };
 }
