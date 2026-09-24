@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, watch, useTemplateRef, inject, ref, computed } from 'vue'
+import { onMounted, onUnmounted, watch, useTemplateRef, inject, ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import usePlaylistStore from '@/stores/playlist'
@@ -27,6 +27,7 @@ let coverObjectURL = null;
 
 // refs
 const audioElement = useTemplateRef('audioElement');
+const playerBar = useTemplateRef('playerBar'); // Toolbar del player (fixed in basso)
 const { songIndex, isPlaying, currentSongDuration: songDuration, currentSong } = storeToRefs(playlistStore);
 const volumeValue = ref(100); // volume slider/ 
 const muted = ref(false); // mute button
@@ -35,6 +36,23 @@ const sliderTime = ref(0); // time slider
 const manualSeek = ref(false); // active while manual seeking on time slider
 const showRemaining = ref(false); // toggle elapsed ↔ remaining
 const buffering = ref(false); // true while initial load or mid-playback stall
+
+// playback rate: stato locale per sessione (nessun dato da salvare). La proprietà nativa
+// HTMLMediaElement.playbackRate funziona anche con MSE; defaultPlaybackRate fa sì che la
+// velocità scelta sopravviva al load() del brano successivo (la spec resetta playbackRate
+// a defaultPlaybackRate a ogni nuovo caricamento)
+const RATE_MIN = 0.5;
+const RATE_MAX = 2.0;
+const RATE_STEP = 0.1;
+const playbackRate = ref(1);
+const showTools = ref(false); // riga strumenti (rate, e in futuro bookmark) a scomparsa
+const rateText = computed(() => `${playbackRate.value.toFixed(1)}×`);
+function clampRate(r) {
+  return Math.min(RATE_MAX, Math.max(RATE_MIN, Math.round(r * 10) / 10));
+}
+function decRate() { playbackRate.value = clampRate(playbackRate.value - RATE_STEP); }
+function incRate() { playbackRate.value = clampRate(playbackRate.value + RATE_STEP); }
+function resetRate() { playbackRate.value = 1; }
 
 // formatting utils 
 function padTime(time) {
@@ -93,9 +111,29 @@ const music = {
   },
 }
 
+// altezza reale del player → variabile CSS --player-height, usata da App.vue come
+// padding-bottom delle pagine: il player è fixed e la sua altezza cambia (riga strumenti
+// aperta/chiusa, mobile su due righe, player nascosto senza brani → 0)
+let playerResizeObserver = null;
+function watchPlayerHeight() {
+  const el = playerBar.value?.$el;
+  if (!el) { return; }
+  playerResizeObserver = new ResizeObserver(() => {
+    document.documentElement.style.setProperty('--player-height', `${el.offsetHeight}px`);
+  });
+  playerResizeObserver.observe(el);
+}
+onUnmounted(() => {
+  if (playerResizeObserver) {
+    playerResizeObserver.disconnect();
+    playerResizeObserver = null;
+  }
+});
+
 // init audioelement events
 onMounted(() => {
   streamer.sweep();
+  watchPlayerHeight();
 
   audioElement.value.onended = (event) => {
       isPlaying.value = true; // ended != stopped: user intent remains "play" (es: gotoNext)
@@ -268,6 +306,14 @@ watch(volumeValue, (val) => {
   audioElement.value.volume = val / 100;
 })
 
+// applica la velocità all'elemento; defaultPlaybackRate così resta valida anche per il
+// brano successivo (il load() resetterebbe altrimenti playbackRate a 1)
+watch(playbackRate, (val) => {
+  if (!audioElement.value) { return; }
+  audioElement.value.playbackRate = val;
+  audioElement.value.defaultPlaybackRate = val;
+})
+
 // events
 function slideStart() {
   manualSeek.value = true;
@@ -322,57 +368,69 @@ function skipForward() {
 </script>
 
 <template>
-  <Toolbar v-show="playlistStore.hasSongs" class="app-footer fixed bottom-0 left-0 w-full shadow-6 z-5 p-0">
+  <Toolbar ref="playerBar" v-show="playlistStore.hasSongs" class="app-footer fixed bottom-0 left-0 w-full shadow-6 z-5 p-0">
     <template #start>
       <div class="player-wrap">
         <!-- song info row -->
         <div v-if="currentSong" class="song-info-row">
-          <span class="song-artist">{{ currentSong.artist }}</span>
-          <span class="song-sep"> · </span>
-          <span class="song-album">{{ currentSong.album }}</span>
-          <span class="song-sep"> · </span>
-          <span class="song-title">{{ currentSong.title }}</span>
+          <span class="song-text">
+            <span class="song-artist">{{ currentSong.artist }}</span>
+            <span class="song-sep"> · </span>
+            <span class="song-title">{{ currentSong.title }}</span>
+          </span>
+          <!-- toggle riga strumenti (rate / in futuro bookmark): piccolo, fuori dalle righe
+               principali, così su mobile la prima riga resta a 3 pulsanti e ci sta in larghezza -->
+          <Button class="tools-toggle" icon="pi pi-sliders-h" @click="showTools = !showTools" :severity="showTools ? 'primary' : 'secondary'" rounded text aria-label="strumenti" />
         </div>
-      <div class="player-layout">
-        <!-- home -->
-        <Button class="p-item p-home" icon="pi pi-bullseye" @click="gotoDisc" severity="secondary" rounded text aria-label="return" />
-        <!-- play/pause/loading -->
-        <Button v-if="buffering" class="p-item p-play" :loading="true" severity="secondary" rounded text aria-label="caricamento" />
-        <Button v-else-if="isPlaying" class="p-item p-play" icon="pi pi-pause" @click="btnPauseClick" severity="primary" rounded text aria-label="pause" />
-        <Button v-else class="p-item p-play" :disabled="!playlistStore.hasSongs" icon="pi pi-play" @click="btnPlayClick" severity="secondary" rounded text aria-label="play" />
-        <!-- time chip -->
-        <Chip v-if="currentSong" :label="songTimeText" class="p-item p-time" style="cursor:pointer" @click="showRemaining = !showRemaining" />
-        <!-- prev -->
-        <Button class="p-item p-prev" :disabled="!playlistStore.hasSongs" icon="pi pi-fast-backward" @click="gotoPrev" severity="secondary" rounded text aria-label="prev" />
-        <!-- skip back -->
-        <Button class="p-item p-skip-back" :disabled="!playlistStore.hasSongs" icon="pi pi-backward" @click="skipBack" severity="secondary" rounded text aria-label="skip-back" />
-        <!-- time slider row break on mobile -->
-        <div class="p-row-break"></div>
-        <!-- time slider -->
-        <div class="p-item p-slider-time">
-          <Slider
-              v-model="sliderTime"
-              :min="0"
-              :max="songDuration > 0 ? songDuration : 1"
-              :disabled="songDuration === 0"
-              @mousedown="slideStart"
-              @mouseup="slideEnd"
-              @update:modelValue="slideDrag"
-              :show-value="false"
-          />
+        <!-- tools row: playback rate (e in futuro bookmark sul brano), sotto al titolo, a scomparsa -->
+        <div v-show="showTools" class="player-tools-row">
+          <div class="tool-group rate-group">
+            <Button class="rate-btn" icon="pi pi-minus" @click="decRate" :disabled="playbackRate <= RATE_MIN" severity="secondary" rounded text aria-label="rallenta" />
+            <Button class="rate-label" :label="rateText" @click="resetRate" severity="secondary" rounded text title="Velocità di riproduzione (click per 1×)" aria-label="velocità normale" />
+            <Button class="rate-btn" icon="pi pi-plus" @click="incRate" :disabled="playbackRate >= RATE_MAX" severity="secondary" rounded text aria-label="velocizza" />
+          </div>
+          <!-- TODO: bookmark del brano qui -->
         </div>
-        <!-- skip forward -->
-        <Button class="p-item p-skip-fw" :disabled="!playlistStore.hasSongs" icon="pi pi-forward" @click="skipForward" severity="secondary" rounded text aria-label="next" />
-        <!-- next -->
-        <Button class="p-item p-next" :disabled="!playlistStore.hasSongs" icon="pi pi-fast-forward" @click="gotoNext" severity="secondary" rounded text aria-label="next" />
-        <!-- volume -->
-        <div class="p-item p-vol">
-          <Slider v-model="volumeValue" :disabled="muted" :min="0" :max="100" :show-value="false" />
+        <div class="player-layout">
+          <!-- home -->
+          <Button class="p-item p-home" icon="pi pi-bullseye" @click="gotoDisc" severity="secondary" rounded text aria-label="return" />
+          <!-- play/pause/loading -->
+          <Button v-if="buffering" class="p-item p-play" :loading="true" severity="secondary" rounded text aria-label="caricamento" />
+          <Button v-else-if="isPlaying" class="p-item p-play" icon="pi pi-pause" @click="btnPauseClick" severity="primary" rounded text aria-label="pause" />
+          <Button v-else class="p-item p-play" :disabled="!playlistStore.hasSongs" icon="pi pi-play" @click="btnPlayClick" severity="secondary" rounded text aria-label="play" />
+          <!-- time chip -->
+          <Chip v-if="currentSong" :label="songTimeText" class="p-item p-time" style="cursor:pointer" @click="showRemaining = !showRemaining" />
+          <!-- prev -->
+          <Button class="p-item p-prev" :disabled="!playlistStore.hasSongs" icon="pi pi-fast-backward" @click="gotoPrev" severity="secondary" rounded text aria-label="prev" />
+          <!-- skip back -->
+          <Button class="p-item p-skip-back" :disabled="!playlistStore.hasSongs" icon="pi pi-backward" @click="skipBack" severity="secondary" rounded text aria-label="skip-back" />
+          <!-- time slider row break on mobile -->
+          <div class="p-row-break"></div>
+          <!-- time slider -->
+          <div class="p-item p-slider-time">
+            <Slider
+                v-model="sliderTime"
+                :min="0"
+                :max="songDuration > 0 ? songDuration : 1"
+                :disabled="songDuration === 0"
+                @mousedown="slideStart"
+                @mouseup="slideEnd"
+                @update:modelValue="slideDrag"
+                :show-value="false"
+            />
+          </div>
+          <!-- skip forward -->
+          <Button class="p-item p-skip-fw" :disabled="!playlistStore.hasSongs" icon="pi pi-forward" @click="skipForward" severity="secondary" rounded text aria-label="next" />
+          <!-- next -->
+          <Button class="p-item p-next" :disabled="!playlistStore.hasSongs" icon="pi pi-fast-forward" @click="gotoNext" severity="secondary" rounded text aria-label="next" />
+          <!-- volume -->
+          <div class="p-item p-vol">
+            <Slider v-model="volumeValue" :disabled="muted" :min="0" :max="100" :show-value="false" />
+          </div>
+          <!-- mute -->
+          <Button v-if="muted" class="p-item p-mute" @click="muted=false" icon="pi pi-bell" severity="primary" rounded text aria-label="unmute" />
+          <Button v-else        class="p-item p-mute" @click="muted=true"  icon="pi pi-bell-slash" severity="secondary" rounded text aria-label="mute" />
         </div>
-        <!-- mute -->
-        <Button v-if="muted" class="p-item p-mute" @click="muted=false" icon="pi pi-bell" severity="primary" rounded text aria-label="unmute" />
-        <Button v-else        class="p-item p-mute" @click="muted=true"  icon="pi pi-bell-slash" severity="secondary" rounded text aria-label="mute" />
-      </div>
       </div>
     </template>
   </Toolbar>
@@ -394,12 +452,31 @@ function skipForward() {
 }
 
 .song-info-row {
-  padding: 0.3rem 0.75rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.3rem 0.25rem 0 0.75rem;
   font-size: 0.75rem;
+}
+
+.song-text {
+  flex: 1;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   opacity: 0.75;
+}
+
+/* toggle riga strumenti: piccolo, in fondo alla riga del titolo. La specificità maggiore
+   vince sul :deep(.p-button) del media query mobile (pulsanti grandi) */
+.song-info-row :deep(.tools-toggle.p-button) {
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+}
+.song-info-row :deep(.tools-toggle .p-button-icon) {
+  font-size: 0.85rem;
 }
 
 .song-sep {
@@ -431,6 +508,40 @@ function skipForward() {
   display: none;
 }
 
+/* tools row: playback rate (bookmark del brano in futuro), sotto al titolo */
+.player-tools-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.1rem 0.5rem 0;
+}
+.tool-group {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+/* label della velocità: è un Button (raggiungibile da tastiera), largo quanto il testo */
+.player-tools-row :deep(.rate-label.p-button) {
+  width: auto;
+  min-width: 3rem;
+  height: 2.5rem;
+  padding: 0 0.5rem;
+}
+.player-tools-row :deep(.rate-label .p-button-label) {
+  font-size: 0.85rem;
+  font-weight: normal;
+}
+/* i pulsanti della riga strumenti restano compatti (controlli secondari),
+   anche su mobile: la specificità maggiore vince sul media query globale */
+.player-tools-row :deep(.rate-btn.p-button) {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+.player-tools-row :deep(.rate-btn .p-button-icon) {
+  font-size: 0.9rem;
+}
+
 /* Mobile: two rows */
 @media (max-width: 767px) {
   .player-layout {
@@ -456,13 +567,33 @@ function skipForward() {
   .p-skip-fw      { order: 10; }
   .p-next         { order: 11; }
 
-  /* Larger buttons on mobile */
+  /* Larger buttons on mobile (player un filo più grande) */
   :deep(.p-button) {
-    width: 3.5rem;
-    height: 3.5rem;
+    width: 3.75rem;
+    height: 3.75rem;
   }
   :deep(.p-button .p-button-icon) {
-    font-size: 1.25rem;
+    font-size: 1.4rem;
+  }
+  .song-info-row {
+    font-size: 0.8rem;
+  }
+  .p-time {
+    font-size: 0.85rem;
+  }
+
+  /* la riga strumenti resta compatta anche col bump mobile */
+  .player-tools-row :deep(.rate-btn.p-button) {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+  .player-tools-row :deep(.rate-label.p-button) {
+    height: 2.75rem;
+  }
+  /* toggle strumenti: piccolo ma con area di tocco sufficiente */
+  .song-info-row :deep(.tools-toggle.p-button) {
+    width: 2.25rem;
+    height: 2.25rem;
   }
 }
 </style>

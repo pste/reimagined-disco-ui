@@ -49,13 +49,16 @@ body {
     background-color: var(--p-slate-600);
 }
 
+/* spazio sotto le pagine per il player fixed: --player-height è la sua altezza reale,
+   aggiornata da AudioPlayer (ResizeObserver) + 1rem di respiro. I valori fissi restano
+   come fallback finché la variabile non è impostata */
 .page-content {
-    padding-bottom: 6rem;
+    padding-bottom: calc(var(--player-height, 5rem) + 1rem);
 }
 
 @media (max-width: 767px) {
     .page-content {
-        padding-bottom: 11rem;
+        padding-bottom: calc(var(--player-height, 10rem) + 1rem);
     }
 }
 /*
