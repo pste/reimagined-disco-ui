@@ -131,7 +131,7 @@ The append loop is wrapped in `appendLoop(gen, startChunk)` and guarded by a `ge
 - target inside a buffered range → the browser handles it alone, nothing to do;
 - target outside → `seekTo(seconds)`: bump `generation` (the superseded loop exits silently at its next check), clear the queue, abort any in-flight append, remove all buffered data, then `abort()` once more with the buffer idle — the 1MB cuts split MP3 frames, so the segment parser is left in `PARSING_MEDIA_SEGMENT` and `timestampOffset` cannot be set until `abort()` resets it. Finally set `sourceBuffer.timestampOffset` to the start time of the target chunk and restart `appendLoop` from that chunk. Stale `updateend` events (queued by aborts) are ignored: completion waits are resolved only with `updating === false`.
 
-The seconds → chunk mapping is a CBR estimate (`bitrate / 8` bytes per second over fixed 1MB chunks, from chunk 1 metadata). Chunk boundaries split MP3 frames arbitrarily, but the decoder resyncs on the first frame header — same as with sequential chunk concatenation. `mediaSource.duration` is set from chunk 1 metadata, otherwise the browser would clamp seeks beyond the data appended so far.
+The seconds → chunk mapping is a CBR estimate (`bitrate / 8` bytes per second over fixed 1MB chunks, from chunk 1 metadata) that starts at `audioOffset`, the size of the leading ID3v2 tag: `byte = audioOffset + seconds * bitrate / 8`, and the chunk's `timestampOffset` is `(chunkStart - audioOffset) / (bitrate / 8)`. Without the offset an embedded cover (APIC, often hundreds of KB) shifted every seek by tens of seconds. If the target chunk still holds tag bytes, the loop restarts from chunk 1: the MSE parser skips the tag only when it sees the `ID3` header, otherwise the cover bytes would be read as audio (false frame syncs). For VBR files `bitrate` is the average over the audio bytes, so the seek position is approximate. Chunk boundaries split MP3 frames arbitrarily, but the decoder resyncs on the first frame header — same as with sequential chunk concatenation. `mediaSource.duration` is set from chunk 1 metadata, otherwise the browser would clamp seeks beyond the data appended so far.
 
 This makes seeks O(1) instead of O(distance): previously a seek to an unbuffered point forced the loop to append (and immediately trim away) every intermediate chunk — re-downloading the non-cached ones.
 
@@ -152,7 +152,7 @@ The backend returns JSON for every chunk:
 Chunk 1 also includes a `metadata` field:
 
 ```json
-{ "metadata": { "duration": 214.3, "totalChunks": 7 }, "data": "..." }
+{ "metadata": { "filesize": 6861234, "bitrate": 256000, "duration": 214, "audioOffset": 12345, "totalChunks": 7 }, "data": "..." }
 ```
 
 `useCacheFeeder` decodes `data` via `atob` + `Uint8Array` → `Blob` (`audio/mpeg`). The `metadata` object is saved alongside the blob in IDB so subsequent cache hits also carry it.
@@ -164,7 +164,7 @@ If a cached chunk 1 record is missing `songMeta` (old cache format), the feeder 
 After chunk 1 is fetched and drained into the `SourceBuffer`, `useStreamedAudio` applies both values from `songMeta`:
 
 - `totalChunks` → replaces `MAX_CHUNKS_GUARD` as the loop upper bound, so the loop exits exactly at the last chunk instead of waiting for an empty blob sentinel.
-- `duration` (seconds, calculated from bitrate + file size) → written to `playlistStore.currentSongDuration`, which `AudioPlayer.vue` reads reactively via `storeToRefs` to drive the time chip and seek slider.
+- `duration` (seconds, from `music-metadata`: for CBR it excludes the tags, for VBR it comes from the Xing/Info header. It is no longer `filesize*8/bitrate`, which counted the ID3 tag and the cover too) → written to `playlistStore.currentSongDuration`, which `AudioPlayer.vue` reads reactively via `storeToRefs` to drive the time chip and seek slider.
 
 The duration is applied **after** `waitForDrain()` on chunk 1, not before, because the audio element ignores `mediaSource.duration` hints until actual data has been appended to the `SourceBuffer`.
 

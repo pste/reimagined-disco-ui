@@ -347,9 +347,21 @@ export function useStreamedAudio() {
         // I tagli da 1MB spezzano i frame MP3, quindi dopo un append il parser resta
         // in PARSING_MEDIA_SEGMENT e timestampOffset sarebbe vietato in quello stato
         try { sourceBuffer.abort(); } catch (_) { /* ignore */ }
+        // l'audio inizia dopo il tag ID3v2 (audioOffset, può contenere una cover di
+        // centinaia di KB): la mappa tempo→byte parte da lì. I songMeta cachati prima
+        // di questo campo non ce l'hanno → 0, come prima
+        const audioOffset = songInfo.audioOffset ?? 0;
         const bytesPerSec = songInfo.bitrate / 8;
-        const startChunk = Math.max(1, Math.min(Math.floor((seconds * bytesPerSec) / CHUNK_BYTES) + 1, maxChunks));
-        sourceBuffer.timestampOffset = ((startChunk - 1) * CHUNK_BYTES) / bytesPerSec;
+        const bytePos = audioOffset + seconds * bytesPerSec;
+        let startChunk = Math.max(1, Math.min(Math.floor(bytePos / CHUNK_BYTES) + 1, maxChunks));
+        // se il chunk contiene ancora byte del tag si riparte dal chunk 1: il parser MSE
+        // salta il tag solo se ne vede l'header "ID3", altrimenti leggerebbe i byte della
+        // cover come audio (falsi frame sync)
+        const firstAudioChunk = Math.floor(audioOffset / CHUNK_BYTES) + 1;
+        if (startChunk <= firstAudioChunk) {
+          startChunk = 1;
+        }
+        sourceBuffer.timestampOffset = Math.max(0, ((startChunk - 1) * CHUNK_BYTES - audioOffset) / bytesPerSec);
         appendLoop(gen, startChunk).catch(onLoopError);
       }
 
