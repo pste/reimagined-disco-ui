@@ -38,6 +38,7 @@ const sliderTime = ref(0); // time slider
 const manualSeek = ref(false); // active while manual seeking on time slider
 const showRemaining = ref(false); // toggle elapsed ↔ remaining
 const buffering = ref(false); // true while initial load or mid-playback stall
+const WAITING_SPINNER_MS = 300; // stall più brevi di così non mostrano lo spinner
 
 // playback rate: stato locale per sessione (nessun dato da salvare). La proprietà nativa
 // HTMLMediaElement.playbackRate funziona anche con MSE; defaultPlaybackRate fa sì che la
@@ -237,8 +238,22 @@ onMounted(() => {
       music.stop();
   };
 
-  audioElement.value.addEventListener('waiting', () => { buffering.value = true; });
-  audioElement.value.addEventListener('playing', () => { buffering.value = false; });
+  // un 'waiting' breve (salto del loop A-B, piccoli seek dentro il buffered) faceva
+  // lampeggiare lo spinner al posto del pulsante pausa: lo si mostra solo se dopo
+  // WAITING_SPINNER_MS l'audio è ancora senza dati (readyState < HAVE_FUTURE_DATA)
+  let waitingTimer = null;
+  audioElement.value.addEventListener('waiting', () => {
+    clearTimeout(waitingTimer);
+    waitingTimer = setTimeout(() => {
+      if (audioElement.value.readyState < HTMLMediaElement.HAVE_FUTURE_DATA) {
+        buffering.value = true;
+      }
+    }, WAITING_SPINNER_MS);
+  });
+  audioElement.value.addEventListener('playing', () => {
+    clearTimeout(waitingTimer);
+    buffering.value = false;
+  });
 
   // sync isPlaying with the real audio element state (handles phone calls, system interruptions)
   // and keep the media session playbackState aligned (Android notification play/pause icon)
@@ -610,7 +625,7 @@ function skipForward() {
   display: flex;
   flex-wrap: wrap; /* velocità + loop A-B: su un telefono stretto vanno a capo */
   align-items: center;
-  column-gap: 1.25rem;
+  column-gap: 0.5rem;
   row-gap: 0.25rem;
   width: 100%;
   padding: 0.1rem 0.5rem 0;
@@ -618,7 +633,7 @@ function skipForward() {
 .tool-group {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.1rem;
 }
 /* loop a sinistra, velocità spinta a destra (anche quando va a capo su mobile) */
 .rate-group {
@@ -627,9 +642,9 @@ function skipForward() {
 /* label della velocità: è un Button (raggiungibile da tastiera), largo quanto il testo */
 .player-tools-row :deep(.rate-label.p-button) {
   width: auto;
-  min-width: 3rem;
+  min-width: 2.75rem;
   height: 2.5rem;
-  padding: 0 0.5rem;
+  padding: 0 0.25rem;
 }
 .player-tools-row :deep(.rate-label .p-button-label) {
   font-size: 0.85rem;
