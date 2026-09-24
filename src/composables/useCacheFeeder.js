@@ -13,6 +13,12 @@ const AUDIO_MIME = 'audio/mpeg';
 // key = "${songId}_${chunkId}" → Promise<{ blob, songMeta }>
 const inFlight = new Map();
 
+// retry dei chunk su errore di rete: backoff 1+2+4+8 = 15s totali, sotto i ~30s
+// bufferizzati in avanti dallo streamer → un blip di rete non si sente
+const FETCH_RETRY_DELAYS = [1000, 2000, 4000, 8000];
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 function base64ToBlob(b64) {
     const byteChars = atob(b64);
     const byteArray = new Uint8Array(byteChars.length);
@@ -27,6 +33,24 @@ export function useCacheFeeder() {
     const cacheStore = useCacheStore();
     const parametersStore = useParametersStore();
     const collectionStore = useCollectionStore();
+
+    // Il client API intercetta gli errori (toast) e restituisce undefined: una risposta
+    // valida è SEMPRE un oggetto ({data} o {data:null} a fine file), quindi undefined
+    // = errore. Senza questa distinzione un errore di rete veniva preso per fine brano
+    // (blob null → endOfStream → brano successivo). Riprova, poi lancia l'errore.
+    async function fetchChunkJson(songId, chunkId) {
+        for (let attempt = 0; ; attempt++) {
+            const json = await API.get('/chunk/song', { id: songId, chunkIndex: chunkId });
+            if (json) {
+                return json;
+            }
+            if (attempt >= FETCH_RETRY_DELAYS.length) {
+                throw new Error(`Impossibile scaricare il brano (chunk ${chunkId})`);
+            }
+            logger.log(`cacheFeeder: song=${songId} chunk=${chunkId} failed, retry in ${FETCH_RETRY_DELAYS[attempt]}ms`);
+            await sleep(FETCH_RETRY_DELAYS[attempt]);
+        }
+    }
 
     // Returns { blob, songMeta } — songMeta is populated for chunk 1 (from network or IDB)
     async function getChunk(songId, chunkId, playerMeta) {
@@ -47,9 +71,9 @@ export function useCacheFeeder() {
         // build and exec a chunk (inFlight) request
         const promise = (async () => {
             try {
-                const json = await API.get('/chunk/song', { id: songId, chunkIndex: chunkId });
-                const blob = json?.data ? base64ToBlob(json.data) : null;
-                const songMeta = json?.metadata ?? null;
+                const json = await fetchChunkJson(songId, chunkId);
+                const blob = json.data ? base64ToBlob(json.data) : null;
+                const songMeta = json.metadata ?? null;
                 const size = blob?.size ?? 0;
                 logger.log(`cacheFeeder: fetched song=${songId} chunk=${chunkId} size=${size}`);
                 if (blob && size > 0) {

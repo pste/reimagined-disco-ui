@@ -75,6 +75,9 @@ const music = {
   play: function() {
     audioElement.value.play().catch(err => {
       logger.log('audioplayer: play() rejected', err);
+      // AbortError = play() interrotto dal load di un altro brano (skip rapido): l'intento
+      // dell'utente resta "play", azzerarlo lascerebbe in pausa il brano successivo
+      if (err?.name === 'AbortError') { return; }
       isPlaying.value = false;
     });
   },
