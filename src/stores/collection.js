@@ -132,7 +132,12 @@ const useCollectionStore = defineStore('collection', () => {
             const next = !item.favorite;
             item.favorite = next; // ottimistico
             try {
-                await API.post('/favorite', { album_id: item.album_id, favorite: next });
+                // su errore l'API client non lancia (toast + undefined): rollback esplicito
+                const res = await API.post('/favorite', { album_id: item.album_id, favorite: next });
+                if (!res?.ok) {
+                    item.favorite = !next;
+                    return;
+                }
                 if (next) {
                     await parametersStore.load();
                     const ttlMs = parametersStore.favCacheTTLDays * 24 * 60 * 60 * 1000;
@@ -148,8 +153,13 @@ const useCollectionStore = defineStore('collection', () => {
         load: async function() {
             loadingStore.start();
             try {
-                items.value = await API.get('/collection');
-                sortCollection();
+                // su errore l'API client mostra il toast e restituisce undefined:
+                // si tengono i dati precedenti (filteredData va in crash su undefined)
+                const data = await API.get('/collection');
+                if (data) {
+                    items.value = data;
+                    sortCollection();
+                }
             }
             finally {
                 loadingStore.stop();

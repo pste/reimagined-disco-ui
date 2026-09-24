@@ -44,13 +44,16 @@ async function makeRequest(method, headers, url, querystring, body) {
     return res;
 }
 
-async function handleRequest(url, fn) {
+// quiet: niente toast (il chiamante gestisce da sé l'errore, es. i retry del cache feeder)
+async function handleRequest(url, fn, quiet) {
     try {
         return await fn();
     }
     catch (err) {
         logger.error(`API ERROR: ${url}`);
-        useErrorsStore().showError(err);
+        if (!quiet) {
+            useErrorsStore().showError(err);
+        }
     }
 }
 
@@ -58,11 +61,12 @@ function createAPI() {
     return {
         buildURL: buildURL,
 
-        get: async (url, data) => {
+        // options.quiet: su errore niente toast (restituisce comunque undefined)
+        get: async (url, data, options) => {
             return handleRequest(url, async () => {
                 const res = await makeRequest("GET", {'Content-Type': 'application/json'}, url, data);
                 return res.json();
-            });
+            }, options?.quiet);
         },
 
         getBlob: async (url, data) => {

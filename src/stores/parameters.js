@@ -12,7 +12,8 @@ const useParametersStore = defineStore('parameters', () => {
     async function load() {
         if (_loaded.value) return;
         const data = await API.get('/parameters');
-        if (data?.length > 0) {
+        if (!data) { return; } // errore: non si segna "caricato", al prossimo load si riprova
+        if (data.length > 0) {
             cronRequeue.value = data[0].cronRequeue ?? '';
             cacheTTLDays.value = data[0].cacheTTLDays ?? 7;
             favCacheTTLDays.value = data[0].favCacheTTLDays ?? 30;

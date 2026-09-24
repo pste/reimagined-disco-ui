@@ -86,6 +86,7 @@ async function loadSongs() {
         loadingStore.start();
         try {
             const songs = await API.get('/search/songs', { albumid });
+            if (!songs) { return; } // errore già mostrato dal client API
             const artistName = album.value?.name ?? '';
             const albumTitle = album.value?.title ?? '';
             albumSongs.value = songs.sort( (a,b) => {

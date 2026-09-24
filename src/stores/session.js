@@ -34,26 +34,30 @@ const useSessionStore = defineStore('session', () => {
         localStorage.removeItem(SESSION_KEY);
     }
 
-    // Checks the real server session. Returns true if valid, false if expired/invalid.
+    // Checks the real server session. Returns false only if the server says it expired (401).
     // Uses raw fetch to avoid triggering the API 401 handler (which would call userLogout recursively).
+    // Network error / 5xx (offline, server down): the session is kept as valid, so the cached
+    // songs stay playable; if it really expired, the first 401 of any API call logs out anyway
     async function verifySession() {
         isVerifying.value = true;
         try {
             const res = await fetch(apiUrl('/user/me'), { credentials: 'include' });
+            if (res.status === 401) {
+                clearSession();
+                return false;
+            }
             if (res.ok) {
                 const data = await res.json();
                 if (data?.username) {
                     user.value.name = data.username;
                     localStorage.setItem(SESSION_KEY, user.value.name);
                 }
-                return true;
             }
-            clearSession();
-            return false;
+            return true;
         }
         catch (_) {
-            clearSession();
-            return false;
+            logger.info("verifySession: server unreachable, keeping the local session");
+            return true;
         }
         finally {
             isVerifying.value = false;
@@ -62,7 +66,12 @@ const useSessionStore = defineStore('session', () => {
 
     async function userLogin(name, pwd) {
         const dbuser = await API.post('/login', { username: name, password: pwd });
-        user.value.name = dbuser?.username || 'anonymous';
+        // su errore (401 credenziali, rete) l'API client restituisce undefined: si lancia
+        // così Login.vue mostra il messaggio, invece di loggare un utente "anonymous"
+        if (!dbuser?.username) {
+            throw new Error('Login failed');
+        }
+        user.value.name = dbuser.username;
         localStorage.setItem(SESSION_KEY, user.value.name);
     }
 

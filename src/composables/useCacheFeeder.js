@@ -34,13 +34,15 @@ export function useCacheFeeder() {
     const parametersStore = useParametersStore();
     const collectionStore = useCollectionStore();
 
-    // Il client API intercetta gli errori (toast) e restituisce undefined: una risposta
+    // Il client API intercetta gli errori e restituisce undefined: una risposta
     // valida è SEMPRE un oggetto ({data} o {data:null} a fine file), quindi undefined
     // = errore. Senza questa distinzione un errore di rete veniva preso per fine brano
-    // (blob null → endOfStream → brano successivo). Riprova, poi lancia l'errore.
+    // (blob null → endOfStream → brano successivo). Riprova in silenzio (quiet: niente
+    // toast per un blip che poi si risolve), poi lancia l'errore: il toast lo mostra
+    // chi chiama (onLoopError dello streamer).
     async function fetchChunkJson(songId, chunkId) {
         for (let attempt = 0; ; attempt++) {
-            const json = await API.get('/chunk/song', { id: songId, chunkIndex: chunkId });
+            const json = await API.get('/chunk/song', { id: songId, chunkIndex: chunkId }, { quiet: true });
             if (json) {
                 return json;
             }

@@ -192,7 +192,7 @@ The `AbortError` is caught and swallowed silently — it is not an error, just a
 | `QuotaExceededError` | `pumpQueue` → `pendingPumpError` → `waitForDrain` | Shows "Buffer audio pieno" |
 | `NotSupportedError` | outer `catch` in `load()` | Shows format error |
 | `InvalidStateError` | outer `catch` in `load()` | Shows player state error |
-| Network / fetch error | `fetchChunkJson` in `useCacheFeeder` | `API.get` shows the toast and returns `undefined` (a valid reply is always `{data}`, `{data:null}` only at EOF): the feeder retries with backoff 1+2+4+8s (15s, within the ~30s buffered ahead, so a network blip is not audible), then throws → `onLoopError` → `endOfStream('network')` → the player stops. It no longer treats the error as end of song (it used to skip to the next track) |
+| Network / fetch error | `fetchChunkJson` in `useCacheFeeder` | `API.get(..., { quiet: true })` returns `undefined` on error without showing a toast (a valid reply is always `{data}`, `{data:null}` only at EOF): the feeder retries silently with backoff 1+2+4+8s (15s, within the ~30s buffered ahead, so a network blip is neither audible nor visible), then throws → `onLoopError` shows a single toast → `endOfStream('network')` → the player stops. It no longer treats the error as end of song (it used to skip to the next track) |
 | `AbortError` | outer `catch` in `load()` | Silent exit (not an error) |
 
 ### pendingPumpError
