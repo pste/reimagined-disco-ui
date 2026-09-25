@@ -227,7 +227,14 @@ onUnmounted(() => {
                                 :aria-label="album?.favorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'"
                             />
                         </div>
-                        <div class="text-color-secondary mb-3">{{ album?.name }}</div>
+                        <!-- nome artista → pagina artista (discografia) -->
+                        <div class="mb-3">
+                            <router-link
+                                v-if="album?.artist_id"
+                                :to="{ name: 'artist', params: { artistid: album.artist_id } }"
+                                class="artist-link text-color-secondary"
+                            >{{ album.name }}</router-link>
+                        </div>
                         
                         <div class="flex-grow-1 m-0" >
                             <Listbox
@@ -263,6 +270,15 @@ onUnmounted(() => {
 .listbox-songs :deep(.p-listbox-list-container) {
     max-height: 320px;
     overflow-y: auto;
+}
+
+/* link discreto: stesso aspetto del testo secondario, sottolineato al passaggio */
+.artist-link {
+    text-decoration: none;
+}
+
+.artist-link:hover {
+    text-decoration: underline;
 }
 
 .cached-icon {
