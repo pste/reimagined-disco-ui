@@ -61,17 +61,27 @@ watch(songIndex, () => {
 })
 
 // methods
+function revokeImage() {
+    if (image.value) {
+        URL.revokeObjectURL(image.value); // done with the buffer ...
+        image.value = null;
+    }
+}
+
 async function loadCover() {
+    const albumid = route.params.albumid;
     loadingStore.start();
     try {
-        const buffer = await coversStore.get(route.params.albumid); // buffer is a blob
+        const buffer = await coversStore.get(albumid); // buffer is a blob
+        // bail if the user moved to another album meanwhile
+        if (route.params.albumid !== albumid) { return; }
+        revokeImage();
         if (buffer) {
             //logger.log("Album: loadCover", buffer);
             image.value = URL.createObjectURL(buffer);
         }
         else {
-            logger.log("Album: cover not found for", route.params.albumid);
-            image.value = null;
+            logger.log("Album: cover not found for", albumid);
         }
     }
     finally {
@@ -87,6 +97,8 @@ async function loadSongs() {
         try {
             const songs = await API.get('/search/songs', { albumid });
             if (!songs) { return; } // errore già mostrato dal client API
+            // bail if the user moved to another album meanwhile (stale response)
+            if (route.params.albumid !== albumid) { return; }
             const artistName = album.value?.name ?? '';
             const albumTitle = album.value?.title ?? '';
             albumSongs.value = songs.sort( (a,b) => {
@@ -150,8 +162,8 @@ async function selectSong(song) {
     playlistStore.play(idx);
 }
 
-// init
-onMounted(async() => {
+// carica brani e cover dell'album della rotta
+async function loadAlbum() {
   await loadSongs();
   await loadCover();
   // update selected song for this view
@@ -165,12 +177,23 @@ onMounted(async() => {
     const meta = { title: firstSong.title, artist: firstSong.artist ?? '', album: firstSong.album ?? '', album_id: firstSong.album_id };
     feeder.prefetch(firstSong.song_id, meta).catch(() => {});
   }
+}
+
+// init
+onMounted(loadAlbum)
+
+// da un album all'altro (es. /album/B → /album/A dal player) la rotta è la stessa:
+// Vue Router riusa questa istanza e onMounted non riparte, quindi si ricarica qui.
+// albumid undefined = si sta lasciando la pagina album: niente da caricare
+watch(() => route.params.albumid, (albumid) => {
+  if (!albumid) { return; }
+  albumSongs.value = [];
+  revokeImage();
+  loadAlbum();
 })
 
 onUnmounted(() => {
-    if (image.value) {
-        URL.revokeObjectURL(image.value); // done with the buffer ...
-    }
+    revokeImage();
 })
 </script>
 
