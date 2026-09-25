@@ -11,7 +11,10 @@ function buildURL(base, url) {
     return `${base}${url}`;
 }
 
-async function makeRequest(method, headers, url, querystring, body) {
+// timeoutMs (opzionale): senza, una connessione in stallo (tipico su mobile: cambio
+// wifi/4G, galleria) lascia la fetch appesa per minuti. Il signal copre anche la
+// lettura del body (res.json()), non solo l'attesa degli header
+async function makeRequest(method, headers, url, querystring, body, timeoutMs) {
     // defer store usage (this handles circular reference between store => API => store)
     const errorsStore = useErrorsStore();
     const sessionStore = useSessionStore();
@@ -28,6 +31,7 @@ async function makeRequest(method, headers, url, querystring, body) {
         headers,
         credentials: 'include',
         body: JSON.stringify(body),
+        signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined,
     });
     if (!res?.ok) {
         const resStatus = res?.status;
@@ -62,9 +66,10 @@ function createAPI() {
         buildURL: buildURL,
 
         // options.quiet: su errore niente toast (restituisce comunque undefined)
+        // options.timeoutMs: richiesta annullata oltre questo tempo (→ undefined, come un errore)
         get: async (url, data, options) => {
             return handleRequest(url, async () => {
-                const res = await makeRequest("GET", {'Content-Type': 'application/json'}, url, data);
+                const res = await makeRequest("GET", {'Content-Type': 'application/json'}, url, data, undefined, options?.timeoutMs);
                 return res.json();
             }, options?.quiet);
         },

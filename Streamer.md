@@ -192,8 +192,10 @@ The `AbortError` is caught and swallowed silently — it is not an error, just a
 | `QuotaExceededError` | `pumpQueue` → `pendingPumpError` → `waitForDrain` | Shows "Buffer audio pieno" |
 | `NotSupportedError` | outer `catch` in `load()` | Shows format error |
 | `InvalidStateError` | outer `catch` in `load()` | Shows player state error |
+| Stalled request (no reply) | `fetchChunkJson` in `useCacheFeeder` | every chunk request has a 20s timeout (`API.get(..., { timeoutMs })` → `AbortSignal.timeout`, it also covers reading the body): without it a stalled mobile connection left the fetch hanging forever, and with it the promise in `inFlight`, which the next song's streamer then joined → playback stopped at the end of the song. On timeout the request is handled like a network error (row below) |
 | Network / fetch error | `fetchChunkJson` in `useCacheFeeder` | `API.get(..., { quiet: true })` returns `undefined` on error without showing a toast (a valid reply is always `{data}`, `{data:null}` only at EOF): the feeder retries silently with backoff 1+2+4+8s (15s, within the ~30s buffered ahead, so a network blip is neither audible nor visible), then throws → `onLoopError` shows a single toast → `endOfStream('network')` → the player stops. It no longer treats the error as end of song (it used to skip to the next track) |
 | `AbortError` | outer `catch` in `load()` | Silent exit (not an error) |
+| Next-song prefetch failed | `prefetchNext` in `AudioPlayer.vue` | retried every 30s (`PREFETCH_RETRY_MS`) until the current song changes; chunks already in IndexedDB are not downloaded again. The prefetch also restarts when the next song in the playlist changes (e.g. album enqueued during the last track). On Android/PWA in background this matters: if the next song is not already cached, the page goes silent while downloading it and the system may freeze it |
 
 ### pendingPumpError
 

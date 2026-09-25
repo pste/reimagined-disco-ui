@@ -16,6 +16,10 @@ const inFlight = new Map();
 // retry dei chunk su errore di rete: backoff 1+2+4+8 = 15s totali, sotto i ~30s
 // bufferizzati in avanti dallo streamer → un blip di rete non si sente
 const FETCH_RETRY_DELAYS = [1000, 2000, 4000, 8000];
+// timeout di ogni richiesta di chunk (~1.4 MB in base64): senza, una connessione in
+// stallo lasciava la fetch appesa per sempre e con lei la promise in `inFlight`, a cui
+// si agganciava poi anche lo streamer del brano successivo → riproduzione ferma
+const FETCH_TIMEOUT_MS = 20000;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -42,7 +46,7 @@ export function useCacheFeeder() {
     // chi chiama (onLoopError dello streamer).
     async function fetchChunkJson(songId, chunkId) {
         for (let attempt = 0; ; attempt++) {
-            const json = await API.get('/chunk/song', { id: songId, chunkIndex: chunkId }, { quiet: true });
+            const json = await API.get('/chunk/song', { id: songId, chunkIndex: chunkId }, { quiet: true, timeoutMs: FETCH_TIMEOUT_MS });
             if (json) {
                 return json;
             }

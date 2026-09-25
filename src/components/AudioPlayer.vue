@@ -27,6 +27,12 @@ const feeder = useCacheFeeder();
 
 let coverObjectURL = null;
 
+// prefetch del brano successivo: se fallisce (rete assente oltre i retry del feeder)
+// si riprova ogni PREFETCH_RETRY_MS finché il brano corrente non cambia
+const PREFETCH_RETRY_MS = 30000;
+let prefetchReadyIndex = -1; // brano che ha già emesso 'canplay': da lì il prefetch del successivo può partire
+let prefetchToken = 0; // un nuovo giro di prefetch fa uscire quello precedente
+
 // refs
 const audioElement = useTemplateRef('audioElement');
 const playerBar = useTemplateRef('playerBar'); // Toolbar del player (fixed in basso)
@@ -323,8 +329,33 @@ async function updateMediaSession(song, val) {
   });
 }
 
+// scarica in cache il brano dopo `val`. In background (Android, schermo spento) è ciò
+// che tiene in vita la riproduzione: se al cambio brano il successivo non è già in
+// IndexedDB, la pagina resta muta durante il download e il sistema può congelarla.
+// I chunk già in cache non si riscaricano: un nuovo tentativo riparte da dove si era fermato
+async function prefetchNext(val) {
+  prefetchToken += 1;
+  const token = prefetchToken;
+  while (token === prefetchToken && songIndex.value === val) {
+    const nextSong = playlistStore.playList[val + 1];
+    if (!nextSong?.song_id) {
+      return;
+    }
+    const nextMeta = { title: nextSong.title, artist: nextSong.artist ?? '', album: nextSong.album ?? '', album_id: nextSong.album_id };
+    try {
+      await feeder.prefetch(nextSong.song_id, nextMeta);
+      return;
+    }
+    catch (err) {
+      logger.log(`audioplayer: prefetch next failed, retry in ${PREFETCH_RETRY_MS}ms`, err);
+      await new Promise((resolve) => setTimeout(resolve, PREFETCH_RETRY_MS));
+    }
+  }
+}
+
 // watch
 watch(songIndex, async (val) => {
+    prefetchReadyIndex = -1; // il nuovo brano non è ancora pronto (vedi 'canplay' sotto)
     clearLoop(); // il loop A-B vale per il brano su cui è stato creato
     if (coverObjectURL) {
       URL.revokeObjectURL(coverObjectURL);
@@ -368,16 +399,13 @@ watch(songIndex, async (val) => {
       // warm the cache for the next track as soon as this one can play: waiting for
       // streamer.load() would start the prefetch only near the END of the current song
       // (backpressure), leaving the next track cold for most of the playback
-      const prefetchNext = () => {
-        const nextSong = playlistStore.playList[val + 1];
+      const onCanPlayPrefetch = () => {
         // bail if songIndex changed meanwhile (user skipped song)
-        if (songIndex.value !== val || !nextSong?.song_id) { return; }
-        const nextMeta = { title: nextSong.title, artist: nextSong.artist ?? '', album: nextSong.album ?? '', album_id: nextSong.album_id };
-        feeder.prefetch(nextSong.song_id, nextMeta).catch((err) => {
-          logger.log('audioplayer: prefetch next failed', err);
-        });
+        if (songIndex.value !== val) { return; }
+        prefetchReadyIndex = val;
+        prefetchNext(val);
       };
-      audioElement.value.addEventListener('canplay', prefetchNext, { once: true });
+      audioElement.value.addEventListener('canplay', onCanPlayPrefetch, { once: true });
 
       await streamer.load(audioElement.value, song_id, playerMeta);
 
@@ -400,6 +428,16 @@ watch(songIndex, async (val) => {
         navigator.mediaSession.playbackState = 'none';
       }
     }
+})
+
+// il brano successivo può cambiare senza cambio di brano corrente (album accodato mentre
+// suona l'ultimo brano, playlist modificata): se il corrente è già pronto, si riparte.
+// Al cambio di songIndex non fa nulla: lì ci pensa il 'canplay' del nuovo brano.
+// NB: dichiarato DOPO watch(songIndex), così nello stesso flush gira dopo il reset di prefetchReadyIndex
+watch(() => playlistStore.playList[songIndex.value + 1]?.song_id, (nextId) => {
+  if (nextId && prefetchReadyIndex === songIndex.value) {
+    prefetchNext(songIndex.value);
+  }
 })
 
 watch(muted, (val) => {
