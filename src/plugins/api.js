@@ -81,11 +81,12 @@ function createAPI() {
             });
         },
 
-        post: async (url, data, query) => {
+        // options.quiet: come per get, su errore niente toast (restituisce undefined)
+        post: async (url, data, query, options) => {
             return handleRequest(url, async () => {
                 const res = await makeRequest("POST", {'Content-Type': 'application/json'}, url, query, data);
                 return res.json();
-            });
+            }, options?.quiet);
         },
 
         delete: async (url) => {

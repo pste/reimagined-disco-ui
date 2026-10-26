@@ -6,6 +6,7 @@ import usePlaylistStore from '@/stores/playlist'
 import useCoversStore from '@/stores/covers'
 import useCacheStore from '@/stores/cache'
 import useCollectionStore from '@/stores/collection'
+import useClientLogStore from '@/stores/clientLog'
 import { useStreamedAudio } from '@/composables/useStreamedAudio'
 import { useCacheFeeder } from '@/composables/useCacheFeeder'
 import logger from '@/plugins/logger'
@@ -18,6 +19,7 @@ const playlistStore = usePlaylistStore();
 const coversStore = useCoversStore();
 const cacheStore = useCacheStore();
 const collectionStore = useCollectionStore();
+const clientLogStore = useClientLogStore();
 
 // streamed audio (MSE, chunks pulled via the cache feeder)
 const streamer = useStreamedAudio();
@@ -133,7 +135,23 @@ function scheduleLoopJump() {
   }, ms);
 }
 
-// formatting utils 
+// log diagnostico su DB (tabella logs, "CLIENT player:<evento>"): ogni evento porta lo
+// stato del player e della pagina, per ricostruire i cambi brano in background
+function trace(event, extra) {
+  const el = audioElement.value;
+  clientLogStore.log(`player:${event}`, {
+    visibility: document.visibilityState,
+    songIndex: songIndex.value,
+    song_id: playlistStore.songId,
+    isPlaying: isPlaying.value,
+    paused: el?.paused,
+    currentTime: el ? Math.round(el.currentTime * 100) / 100 : null,
+    readyState: el?.readyState,
+    ...extra,
+  });
+}
+
+// formatting utils
 function padTime(time) {
   return (time<10) ? `0${time}`:`${time}`
 }
@@ -172,6 +190,7 @@ const music = {
   play: function() {
     audioElement.value.play().catch(err => {
       logger.log('audioplayer: play() rejected', err);
+      trace('play-rejected', { name: err?.name, message: err?.message });
       // AbortError = play() interrotto dal load di un altro brano (skip rapido): l'intento
       // dell'utente resta "play", azzerarlo lascerebbe in pausa il brano successivo
       if (err?.name === 'AbortError') { return; }
@@ -215,13 +234,14 @@ onMounted(() => {
   watchPlayerHeight();
 
   audioElement.value.onended = (event) => {
+      trace('ended');
       isPlaying.value = true; // ended != stopped: user intent remains "play" (es: gotoNext)
       playlistStore.gotoNext();
   }
 
   if ('mediaSession' in navigator) {
-    navigator.mediaSession.setActionHandler('play',          () => { isPlaying.value = true;  music.play(); });
-    navigator.mediaSession.setActionHandler('pause',         () => { isPlaying.value = false; music.pause(); });
+    navigator.mediaSession.setActionHandler('play',          () => { trace('session-play');  isPlaying.value = true;  music.play(); });
+    navigator.mediaSession.setActionHandler('pause',         () => { trace('session-pause'); isPlaying.value = false; music.pause(); });
     navigator.mediaSession.setActionHandler('nexttrack',     () => playlistStore.gotoNext());
     navigator.mediaSession.setActionHandler('previoustrack', () => playlistStore.gotoPrev());
   }
@@ -229,6 +249,7 @@ onMounted(() => {
   // resume only if user intent is "play" (isPlaying): a pause from the Android
   // notification must not be overridden when the app comes back to foreground
   document.addEventListener('visibilitychange', () => {
+    trace('visibilitychange');
     if (!document.hidden && isPlaying.value && audioElement.value.paused) {
       music.play();
     }
@@ -239,6 +260,7 @@ onMounted(() => {
       logger.log('audioplayer:  Error: ' + audioElement.value.error.message);
       logger.log('audioplayer:  Error evt: ' + event.currentTarget.error.code);
       logger.log('audioplayer:  Error evt: ' + event.currentTarget.error.message);
+      trace('error', { code: audioElement.value.error?.code, message: audioElement.value.error?.message });
       buffering.value = false;
       isPlaying.value = false;
       music.stop();
@@ -249,6 +271,7 @@ onMounted(() => {
   // WAITING_SPINNER_MS l'audio è ancora senza dati (readyState < HAVE_FUTURE_DATA)
   let waitingTimer = null;
   audioElement.value.addEventListener('waiting', () => {
+    trace('waiting');
     clearTimeout(waitingTimer);
     waitingTimer = setTimeout(() => {
       if (audioElement.value.readyState < HTMLMediaElement.HAVE_FUTURE_DATA) {
@@ -257,6 +280,7 @@ onMounted(() => {
     }, WAITING_SPINNER_MS);
   });
   audioElement.value.addEventListener('playing', () => {
+    trace('playing');
     clearTimeout(waitingTimer);
     buffering.value = false;
   });
@@ -264,17 +288,20 @@ onMounted(() => {
   // sync isPlaying with the real audio element state (handles phone calls, system interruptions)
   // and keep the media session playbackState aligned (Android notification play/pause icon)
   audioElement.value.addEventListener('play',  () => {
+    trace('play');
     isPlaying.value = true;
     if ('mediaSession' in navigator) { navigator.mediaSession.playbackState = 'playing'; }
     scheduleLoopJump();
   });
   audioElement.value.addEventListener('pause', () => {
+    trace('pause');
     isPlaying.value = false;
     if ('mediaSession' in navigator) { navigator.mediaSession.playbackState = 'paused'; }
     scheduleLoopJump(); // in pausa: cancella il timer del loop
   });
   // loop A-B: ricalcola il salto dopo un seek e se cambia la velocità
   audioElement.value.addEventListener('seeked', scheduleLoopJump);
+  audioElement.value.addEventListener('canplay', () => { trace('canplay'); });
   audioElement.value.addEventListener('ratechange', scheduleLoopJump);
 
   audioElement.value.addEventListener('timeupdate', function() {
@@ -407,7 +434,9 @@ watch(songIndex, async (val) => {
       };
       audioElement.value.addEventListener('canplay', onCanPlayPrefetch, { once: true });
 
+      trace('load-start', { shouldPlay });
       await streamer.load(audioElement.value, song_id, playerMeta);
+      trace('load-end', { loadedIndex: val });
 
       audioElement.value.removeEventListener('canplay', earlyPlay);
       // bail if songIndex changed while loading (user skipped song)
