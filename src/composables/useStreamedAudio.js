@@ -32,7 +32,11 @@ export function useStreamedAudio() {
   let sourceBuffer = null;
   let currentObjectURL = null; // the audioElement refers to this always changing URL
   let abortController = null;
-  let removeSeekListener = null; // unhook del listener 'seeking' del load corrente
+  let removeListeners = null; // unhook dei listener 'seeking'/'timeupdate' del load corrente
+  // gapless: più brani accodati sullo stesso MediaSource, uno dopo l'altro sulla stessa
+  // timeline. songBase = secondo della timeline in cui inizia il brano in riproduzione
+  // (0 per il primo): il player lo sottrae a currentTime per mostrare il tempo del brano
+  const songBase = ref(0);
   // loop A-B: trimBuffer non rimuove i dati da qui in poi (secondi), così il salto B→A
   // cade nel buffered e lo gestisce il browser (niente seekTo, niente pausa). null = off
   let keepFrom = null;
@@ -51,9 +55,9 @@ export function useStreamedAudio() {
 
   // stop event — aborts any in-flight load and tears down MSE
   function stop() {
-    if (removeSeekListener) {
-      removeSeekListener();
-      removeSeekListener = null;
+    if (removeListeners) {
+      removeListeners();
+      removeListeners = null;
     }
     if (abortController) {
       abortController.abort();
@@ -65,11 +69,17 @@ export function useStreamedAudio() {
     mediaSource = null;
     sourceBuffer = null;
     revokeCurrentURL();
+    songBase.value = 0;
     loading.value = false;
   }
 
-  //
-  async function load(audioEl, songId, playerMeta) {
+  // chain (opzionale) abilita il gapless:
+  //   key            identifica il brano per il chiamante (l'indice in playlist)
+  //   getNext(key)   chiamata quando il brano `key` è tutto appeso: ritorna
+  //                  { key, songId, meta } del brano da accodare, oppure null (fine)
+  //   onSongChange(key, songId)  la riproduzione è entrata in un brano accodato
+  // load() si risolve quando il PRIMO brano è tutto appeso; la catena prosegue da sola
+  async function load(audioEl, songId, playerMeta, chain = {}) {
     // clear before start (again)
     stop();
     keepFrom = null; // un loop A-B vale solo per il brano su cui è stato creato
@@ -235,57 +245,96 @@ export function useStreamedAudio() {
       // drain after each chunk, trim played data, then throttle if buffer is full.
       // un seek (seekTo) incrementa `generation`: il loop superato esce in silenzio
       // al primo check dopo ogni await, quello nuovo riparte dal chunk del seek
-      let appended = 0;
-      let totalBytes = 0;
-      let maxChunks = MAX_CHUNKS_GUARD;
-      let songInfo = null; // songMeta del chunk 1: serve alla mappa tempo→chunk del seek
       let generation = 0;
       let loopError = null;
       let loopEnded;
       const loopEndedPromise = new Promise((resolve) => { loopEnded = resolve; });
 
-      async function appendLoop(gen, startChunk) {
-        for (let chunkId = startChunk; chunkId <= maxChunks; chunkId++) {
-          const { blob, songMeta } = await feeder.getChunk(songId, chunkId, playerMeta);
-          signal.throwIfAborted();
-          if (gen !== generation) { return; }
-          if (!blob || blob.size === 0) {
-            logger.log(`streamedAudio: end of stream at chunk=${chunkId} (blob=${blob ? blob.size : 'undefined'})`);
-            break;
+      // gapless: i brani appesi sul MediaSource, in ordine di timeline. `current` è
+      // l'indice di quello in riproduzione; i successivi sono già (in parte) nel buffer
+      const segments = [];
+      let current = 0;
+      function newSegment(key, segSongId, meta, base) {
+        // info = songMeta del chunk 1: serve alla mappa tempo→chunk del seek
+        return { key, songId: segSongId, meta, base, info: null, maxChunks: MAX_CHUNKS_GUARD };
+      }
+      segments.push(newSegment(chain.key, songId, playerMeta, 0));
+      let appendingSeg = null; // brano che il loop sta appendendo (per onLoopError)
+
+      async function appendLoop(gen, seg, startChunk) {
+        while (true) {
+          appendingSeg = seg;
+          let appended = 0;
+          let totalBytes = 0;
+          for (let chunkId = startChunk; chunkId <= seg.maxChunks; chunkId++) {
+            const { blob, songMeta } = await feeder.getChunk(seg.songId, chunkId, seg.meta);
+            signal.throwIfAborted();
+            if (gen !== generation) { return; }
+            if (!blob || blob.size === 0) {
+              logger.log(`streamedAudio: end of stream at chunk=${chunkId} (blob=${blob ? blob.size : 'undefined'})`);
+              break;
+            }
+            // update loop bound immediately (pure JS variable, no MSE interaction needed)
+            if (chunkId === 1 && (songMeta?.totalChunks ?? 0) > 0) {
+              seg.maxChunks = songMeta.totalChunks;
+              seg.info = songMeta;
+            }
+            const buf = await blob.arrayBuffer();
+            signal.throwIfAborted();
+            if (gen !== generation) { return; }
+            enqueueChunk(buf);
+            await waitForDrain();
+            signal.throwIfAborted();
+            if (gen !== generation) { return; }
+            if (chunkId === 1 && (songMeta?.duration ?? 0) > 0) {
+              // un brano accodato prende la sua durata solo quando inizia a suonare (onTimeUpdate)
+              if (seg === segments[current]) {
+                playlistStore.currentSongDuration = songMeta.duration;
+              }
+              // duration nota anche a MSE: senza, il browser clampa i seek oltre i dati già appesi
+              const end = seg.base + songMeta.duration;
+              if (!(mediaSource.duration >= end)) { // NaN all'inizio
+                try { mediaSource.duration = end; } catch (_) { /* updating: ignore */ }
+              }
+            }
+            await trimBuffer();
+            signal.throwIfAborted();
+            if (gen !== generation) { return; }
+            await throttleIfBufferFull();
+            signal.throwIfAborted();
+            if (gen !== generation) { return; }
+            appended += 1;
+            totalBytes += buf.byteLength;
           }
-          // update loop bound immediately (pure JS variable, no MSE interaction needed)
-          if (chunkId === 1 && (songMeta?.totalChunks ?? 0) > 0) {
-            maxChunks = songMeta.totalChunks;
-            songInfo = songMeta;
-          }
-          const buf = await blob.arrayBuffer();
-          signal.throwIfAborted();
-          if (gen !== generation) { return; }
-          enqueueChunk(buf);
           await waitForDrain();
           signal.throwIfAborted();
           if (gen !== generation) { return; }
-          // propagate duration to store after first chunk is appended
-          if (chunkId === 1 && (songMeta?.duration ?? 0) > 0) {
-            playlistStore.currentSongDuration = songMeta.duration;
-            // duration nota anche a MSE: senza, il browser clampa i seek oltre i dati già appesi
-            try { mediaSource.duration = songMeta.duration; } catch (_) { /* updating: ignore */ }
+          logger.log(`streamedAudio: song=${seg.songId} appended ${appended} chunks, ${totalBytes} bytes`);
+          loopEnded(); // il primo brano è tutto appeso: load() si risolve (le chiamate successive non fanno nulla)
+
+          // gapless: si accoda il brano successivo sulla stessa timeline, così l'elemento
+          // audio non va mai in 'ended' tra un brano e l'altro. Una pagina muta in background
+          // (PWA Android a schermo spento) viene congelata dal sistema: il cambio brano con
+          // un nuovo MediaSource poteva restare fermo per minuti
+          const next = chain.getNext ? chain.getNext(seg.key) : null;
+          if (!next) {
+            break;
           }
-          await trimBuffer();
+          await waitForIdle(); // timestampOffset esige updating === false
           signal.throwIfAborted();
           if (gen !== generation) { return; }
-          await throttleIfBufferFull();
-          signal.throwIfAborted();
-          if (gen !== generation) { return; }
-          appended += 1;
-          totalBytes += buf.byteLength;
+          // abort: resetta il parser (l'ultimo chunk può finire con un frame a metà),
+          // il brano nuovo riparte pulito dal suo tag ID3
+          try { sourceBuffer.abort(); } catch (_) { /* ignore */ }
+          const buffered = sourceBuffer.buffered;
+          const base = buffered.length > 0 ? buffered.end(buffered.length - 1) : seg.base + (seg.info?.duration ?? 0);
+          sourceBuffer.timestampOffset = base;
+          seg = newSegment(next.key, next.songId, next.meta, base);
+          segments.push(seg);
+          startChunk = 1;
         }
-        // fine naturale del brano: drain e chiusura dello stream (serve anche ai
+        // fine naturale della catena: chiusura dello stream (serve anche ai
         // re-append post-seek: senza endOfStream l'elemento non emette 'ended')
-        await waitForDrain();
-        signal.throwIfAborted();
-        if (gen !== generation) { return; }
-        logger.log(`streamedAudio: song=${songId} appended ${appended} chunks, ${totalBytes} bytes`);
         if (mediaSource.readyState === 'open') {
           try { mediaSource.endOfStream(); } catch (_) { /* ignore */ }
         }
@@ -293,7 +342,20 @@ export function useStreamedAudio() {
         loopEnded();
       }
 
-      function onLoopError(err) {
+      function onLoopError(err, gen) {
+        if (gen !== generation) { return; } // loop già superato da un seek: il suo errore non conta
+        // errore su un brano accodato (es. rete giù oltre i retry del feeder): il brano in
+        // riproduzione non c'entra, finisce normalmente. Si toglie dal buffer la parte già
+        // appesa del brano accodato e si chiude lo stream: a fine brano 'ended' → gotoNext,
+        // che ricarica il successivo da capo (con il suo eventuale errore)
+        const failed = segments.indexOf(appendingSeg);
+        if (err?.name !== 'AbortError' && failed > current) {
+          logger.error('streamedAudio: queued song failed', err);
+          segments.length = failed;
+          truncateAt(appendingSeg.base);
+          loading.value = false;
+          return;
+        }
         if (err?.name !== 'AbortError') {
           logger.error('streamedAudio error:', err);
           error.value = err;
@@ -305,6 +367,25 @@ export function useStreamedAudio() {
         loopError = err;
         loading.value = false;
         loopEnded(); // sblocca comunque load()
+      }
+
+      // rimuove dal buffer i dati da `seconds` in poi e chiude lo stream
+      async function truncateAt(seconds) {
+        try {
+          if (sourceBuffer.updating) { sourceBuffer.abort(); }
+          await waitForIdle();
+          const buffered = sourceBuffer.buffered;
+          if (buffered.length > 0 && buffered.end(buffered.length - 1) > seconds) {
+            sourceBuffer.remove(seconds, buffered.end(buffered.length - 1));
+            await waitForIdle();
+          }
+          if (mediaSource.readyState === 'open') {
+            mediaSource.endOfStream();
+          }
+        }
+        catch (err) {
+          logger.error('streamedAudio: truncateAt error', err);
+        }
       }
 
       // attende che il SourceBuffer sia fermo (nessun append/remove in volo).
@@ -341,12 +422,16 @@ export function useStreamedAudio() {
       }
 
       // seek fuori dal buffered: scarta la pipeline corrente e riparte dal chunk che
-      // contiene il punto richiesto. Mappa tempo→chunk con stima CBR dal bitrate (i
-      // chunk sono tagli fissi da 1MB lato server; il decoder MP3 si risincronizza
-      // sul primo frame header del chunk, come già avviene coi tagli sequenziali)
+      // contiene il punto richiesto (secondi dall'inizio del brano in riproduzione).
+      // Mappa tempo→chunk con stima CBR dal bitrate (i chunk sono tagli fissi da 1MB
+      // lato server; il decoder MP3 si risincronizza sul primo frame header del chunk,
+      // come già avviene coi tagli sequenziali). I brani accodati dopo il corrente
+      // vengono buttati: la catena li riaccoda quando il corrente è di nuovo tutto appeso
       async function seekTo(seconds) {
         generation += 1;
         const gen = generation;
+        const seg = segments[current];
+        segments.length = current + 1;
         queue.length = 0;
         pendingPumpError = null;
         if (drainResolve) { drainResolve(); drainResolve = null; drainReject = null; } // release the superseded loop
@@ -361,10 +446,10 @@ export function useStreamedAudio() {
         // l'audio inizia dopo il tag ID3v2 (audioOffset, può contenere una cover di
         // centinaia di KB): la mappa tempo→byte parte da lì. I songMeta cachati prima
         // di questo campo non ce l'hanno → 0, come prima
-        const audioOffset = songInfo.audioOffset ?? 0;
-        const bytesPerSec = songInfo.bitrate / 8;
+        const audioOffset = seg.info.audioOffset ?? 0;
+        const bytesPerSec = seg.info.bitrate / 8;
         const bytePos = audioOffset + seconds * bytesPerSec;
-        let startChunk = Math.max(1, Math.min(Math.floor(bytePos / CHUNK_BYTES) + 1, maxChunks));
+        let startChunk = Math.max(1, Math.min(Math.floor(bytePos / CHUNK_BYTES) + 1, seg.maxChunks));
         // se il chunk contiene ancora byte del tag si riparte dal chunk 1: il parser MSE
         // salta il tag solo se ne vede l'header "ID3", altrimenti leggerebbe i byte della
         // cover come audio (falsi frame sync)
@@ -372,25 +457,46 @@ export function useStreamedAudio() {
         if (startChunk <= firstAudioChunk) {
           startChunk = 1;
         }
-        sourceBuffer.timestampOffset = Math.max(0, ((startChunk - 1) * CHUNK_BYTES - audioOffset) / bytesPerSec);
-        appendLoop(gen, startChunk).catch(onLoopError);
+        sourceBuffer.timestampOffset = seg.base + Math.max(0, ((startChunk - 1) * CHUNK_BYTES - audioOffset) / bytesPerSec);
+        appendLoop(gen, seg, startChunk).catch((err) => onLoopError(err, gen));
       }
 
       // i seek dentro al buffered li gestisce il browser da solo; fuori, si riparte
       // dal chunk giusto invece di accodare in sequenza tutti quelli intermedi
       function onSeeking() {
-        if (!songInfo?.bitrate || !sourceBuffer) { return; } // mappa tempo→chunk non ancora disponibile
+        const seg = segments[current];
+        if (!seg.info?.bitrate || !sourceBuffer) { return; } // mappa tempo→chunk non ancora disponibile
         const t = audioEl.currentTime;
         const buffered = sourceBuffer.buffered;
         for (let i = 0; i < buffered.length; i++) {
           if (t >= buffered.start(i) - 0.5 && t <= buffered.end(i)) { return; }
         }
-        seekTo(t).catch((err) => { logger.error('streamedAudio: seekTo error', err); });
+        seekTo(Math.max(0, t - seg.base)).catch((err) => { logger.error('streamedAudio: seekTo error', err); });
       }
-      audioEl.addEventListener('seeking', onSeeking);
-      removeSeekListener = () => { audioEl.removeEventListener('seeking', onSeeking); };
 
-      appendLoop(generation, 1).catch(onLoopError);
+      // gapless: la riproduzione ha superato l'inizio di un brano accodato → diventa il
+      // brano corrente (timeupdate scatta ~4 volte al secondo anche in background)
+      function onTimeUpdate() {
+        while (current + 1 < segments.length && audioEl.currentTime >= segments[current + 1].base) {
+          current += 1;
+          const seg = segments[current];
+          songBase.value = seg.base;
+          playlistStore.currentSongDuration = seg.info?.duration ?? 0;
+          keepFrom = null; // un loop A-B vale solo per il brano su cui è stato creato
+          if (chain.onSongChange) {
+            chain.onSongChange(seg.key, seg.songId);
+          }
+        }
+      }
+
+      audioEl.addEventListener('seeking', onSeeking);
+      audioEl.addEventListener('timeupdate', onTimeUpdate);
+      removeListeners = () => {
+        audioEl.removeEventListener('seeking', onSeeking);
+        audioEl.removeEventListener('timeupdate', onTimeUpdate);
+      };
+
+      appendLoop(generation, segments[0], 1).catch((err) => onLoopError(err, 0));
       await loopEndedPromise;
       if (loopError) { return; } // errore già gestito da onLoopError (incluso AbortError)
       signal.throwIfAborted();
@@ -408,11 +514,8 @@ export function useStreamedAudio() {
         try { mediaSource.endOfStream('network'); } catch (_) { /* ignore */ }
       }
     }
-    finally {
-      if (abortController === ac) {
-        abortController = null;
-      }
-    }
+    // NB: abortController resta impostato anche dopo il return: con il gapless la catena
+    // continua ad appendere i brani successivi, e solo il prossimo stop() la deve fermare
   }
 
   // db cleanup
@@ -425,5 +528,5 @@ export function useStreamedAudio() {
     }
   }
 
-  return { load, stop, sweep, setKeepFrom, loading, error };
+  return { load, stop, sweep, setKeepFrom, songBase, loading, error };
 }

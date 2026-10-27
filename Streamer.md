@@ -126,7 +126,7 @@ The throttle is active **even while paused** (`currentTime` 0 → `ahead` = tota
 
 ### Seeking
 
-The append loop is wrapped in `appendLoop(gen, startChunk)` and guarded by a `generation` counter. A `seeking` event on the audio element is handled like this:
+The append loop is wrapped in `appendLoop(gen, seg, startChunk)` and guarded by a `generation` counter. A `seeking` event on the audio element is handled like this:
 
 - target inside a buffered range → the browser handles it alone, nothing to do;
 - target outside → `seekTo(seconds)`: bump `generation` (the superseded loop exits silently at its next check), clear the queue, abort any in-flight append, remove all buffered data, then `abort()` once more with the buffer idle — the 1MB cuts split MP3 frames, so the segment parser is left in `PARSING_MEDIA_SEGMENT` and `timestampOffset` cannot be set until `abort()` resets it. Finally set `sourceBuffer.timestampOffset` to the start time of the target chunk and restart `appendLoop` from that chunk. Stale `updateend` events (queued by aborts) are ignored: completion waits are resolved only with `updating === false`.
@@ -134,6 +134,26 @@ The append loop is wrapped in `appendLoop(gen, startChunk)` and guarded by a `ge
 The seconds → chunk mapping is a CBR estimate (`bitrate / 8` bytes per second over fixed 1MB chunks, from chunk 1 metadata) that starts at `audioOffset`, the size of the leading ID3v2 tag: `byte = audioOffset + seconds * bitrate / 8`, and the chunk's `timestampOffset` is `(chunkStart - audioOffset) / (bitrate / 8)`. Without the offset an embedded cover (APIC, often hundreds of KB) shifted every seek by tens of seconds. If the target chunk still holds tag bytes, the loop restarts from chunk 1: the MSE parser skips the tag only when it sees the `ID3` header, otherwise the cover bytes would be read as audio (false frame syncs). For VBR files `bitrate` is the average over the audio bytes, so the seek position is approximate. Chunk boundaries split MP3 frames arbitrarily, but the decoder resyncs on the first frame header — same as with sequential chunk concatenation. `mediaSource.duration` is set from chunk 1 metadata, otherwise the browser would clamp seeks beyond the data appended so far.
 
 This makes seeks O(1) instead of O(distance): previously a seek to an unbuffered point forced the loop to append (and immediately trim away) every intermediate chunk — re-downloading the non-cached ones.
+
+### Gapless (songs chained on one MediaSource)
+
+Before, every song had its own `MediaSource`: on `ended` the player called `gotoNext()` and `load()` built a new one. Between the two songs the `<audio>` element was ended and silent, and on Android a hidden page (PWA, screen off) with no audible media gets **frozen** by the system: client logs from 2026-10-27 show the next song starting 74s later, with the song already fully in IndexedDB and no request reaching the server during the gap (not even the 15s client-log timer fired).
+
+Now `load(audioEl, songId, playerMeta, chain)` keeps appending to the same `SourceBuffer`:
+
+- `chain.getNext(key)` is called when song `key` is fully appended (so ~30s before its end, because of the backpressure). It returns `{ key, songId, meta }` of the song to queue, or `null` → `endOfStream()`.
+- Before the next song: `waitForIdle()`, `abort()` (resets the parser: the last chunk may end mid-frame, the new song starts clean from its `ID3` header), then `timestampOffset = buffered.end` → the new song starts exactly where the previous one ends. The `SourceBuffer` for `audio/mpeg` is in `sequence` mode, so frames would be contiguous anyway; the explicit offset is the same technique `seekTo` uses.
+- The appended songs are tracked in `segments` (`{ key, songId, base, info, maxChunks }`); `current` is the one playing. On `timeupdate`, when `currentTime` passes the `base` of the next segment, it becomes current: `songBase` (exported ref) and `playlistStore.currentSongDuration` are updated, `keepFrom` is cleared and `chain.onSongChange(key, songId)` is called. A queued song's duration is not written to the store at its chunk 1 (it would overwrite the duration of the song still playing).
+- `load()` resolves when the **first** song is fully appended (same moment as before); the chain then continues on its own until the next `stop()`. For this reason `abortController` is no longer cleared at the end of `load()`.
+- `mediaSource.duration` only grows (`base + duration` of each queued song).
+
+The element never reaches `ended` between songs, so playback never stops. What remains at the boundary is the MP3 encoder delay/padding (a few tens of ms of silence inside the files themselves). Tested in headless Chromium with real MP3 files (45s, 750 KB cover in the tag, 1MB chunks, 3× speed): a single contiguous buffered range, no `waiting`/`pause` at the boundaries, the song changes at the expected base.
+
+**AudioPlayer.vue**: `queueNext(key)` returns `playList[key + 1]`; `onGaplessChange(key, songId)` checks that `playList[key]` is still the queued song (the playlist may have changed after queuing; if not → `gotoNext()`, full load) and sets `gaplessIndex = key` + `songIndex = key`. The `songIndex` watch sees `val === gaplessIndex` and skips the load: it only updates the media session notification, stats, `saveLastPlayed`, the cache TTL and starts the prefetch of the following song (no `canplay` will come). User skips (next/prev, playlist click, notification) still do a full `load()`.
+
+**Times are on one timeline**: `currentTime` keeps growing across songs. The player shows `currentTime - songBase` (`songTime()`) and seeks with `songBase + seconds` (`seekSong()`); `seekTo(seconds)` in the streamer is relative to the current song (`timestampOffset = base + ...`) and drops the queued songs (the chain queues them again when the current one is fully appended). The A-B loop keeps `loopA`/`loopB` on the element timeline and shows them relative.
+
+**Queued song failing** (e.g. network down past the feeder retries): `onLoopError` sees that the failing segment is not the current one, removes its partial data from the buffer (`truncateAt(base)`) and closes the stream without a toast: the current song ends normally, `ended` → `gotoNext()` reloads the next one from scratch (with its own error, if any). Errors from a loop superseded by a seek are ignored (`gen !== generation`).
 
 ### Early Play via `canplay`
 
@@ -170,7 +190,7 @@ The duration is applied **after** `waitForDrain()` on chunk 1, not before, becau
 
 ### endOfStream
 
-When the for loop has processed all `totalChunks` chunks, after a final `waitForDrain`, it calls `mediaSource.endOfStream()`. This signals the browser that the stream is complete: the audio element finalises the duration and playback can reach the natural end of the song.
+When the last song of the chain has been fully appended (all `totalChunks` chunks, final `waitForDrain`, `getNext` returned `null`), the loop calls `mediaSource.endOfStream()`. This signals the browser that the stream is complete: the audio element finalises the duration and playback can reach the natural end of the song.
 
 ### Abort and Cleanup
 

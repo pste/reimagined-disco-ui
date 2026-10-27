@@ -34,6 +34,9 @@ let coverObjectURL = null;
 const PREFETCH_RETRY_MS = 30000;
 let prefetchReadyIndex = -1; // brano che ha già emesso 'canplay': da lì il prefetch del successivo può partire
 let prefetchToken = 0; // un nuovo giro di prefetch fa uscire quello precedente
+// gapless: indice del brano in cui la riproduzione è appena entrata da sola (brano accodato
+// dallo streamer sullo stesso MediaSource): il watch su songIndex non deve ricaricarlo
+let gaplessIndex = -1;
 
 // refs
 const audioElement = useTemplateRef('audioElement');
@@ -73,7 +76,15 @@ function resetRate() { playbackRate.value = 1; }
 const loopA = ref(null); // secondi, null = non impostato
 const loopB = ref(null);
 const loopActive = computed(() => loopA.value !== null && loopB.value !== null);
-const loopText = computed(() => loopActive.value ? `${secsToTime(loopA.value)}–${secsToTime(loopB.value)}` : '');
+// A e B sono tempi della timeline dell'elemento audio (come currentTime): con il gapless il
+// brano può non iniziare da 0, quindi l'etichetta li mostra relativi all'inizio del brano
+const loopText = computed(() => {
+  if (!loopActive.value) {
+    return '';
+  }
+  const base = streamer.songBase.value;
+  return `${secsToTime(loopA.value - base)}–${secsToTime(loopB.value - base)}`;
+});
 // oltre questa durata il loop funziona lo stesso, ma senza tenere tutto nel buffer MSE
 // (rischio QuotaExceededError): il salto B→A ricarica i dati, con una breve pausa
 const LOOP_KEEP_MAX_SECS = 180;
@@ -90,7 +101,7 @@ function setLoopA() {
 
 function setLoopB() {
   const t = audioElement.value.currentTime;
-  const a = loopA.value ?? 0; // B senza A: loop dall'inizio del brano
+  const a = loopA.value ?? streamer.songBase.value; // B senza A: loop dall'inizio del brano
   if (t <= a) {
     return;
   }
@@ -146,6 +157,7 @@ function trace(event, extra) {
     isPlaying: isPlaying.value,
     paused: el?.paused,
     currentTime: el ? Math.round(el.currentTime * 100) / 100 : null,
+    songBase: Math.round(streamer.songBase.value * 100) / 100,
     readyState: el?.readyState,
     ...extra,
   });
@@ -169,6 +181,42 @@ function secsToTime(secs) {
     return `${padTime(mm)}:${padTime(ss)}`;
   }
 };
+
+// con il gapless più brani stanno sulla stessa timeline dell'elemento audio:
+// il tempo del brano è currentTime meno l'inizio del brano (streamer.songBase)
+function songTime() {
+  return Math.max(0, (audioElement.value.currentTime || 0) - streamer.songBase.value);
+}
+function seekSong(seconds) {
+  audioElement.value.currentTime = streamer.songBase.value + Math.max(0, seconds);
+}
+
+// meta del brano per feeder/streamer (salvata insieme ai chunk in cache)
+function playerMetaOf(song) {
+  return { title: song.title, artist: song.artist ?? '', album: song.album ?? '', album_id: song.album_id };
+}
+
+// gapless: lo streamer ha appeso tutto il brano `key` e chiede il successivo da accodare
+function queueNext(key) {
+  const next = playlistStore.playList[key + 1];
+  if (!next?.song_id) {
+    return null;
+  }
+  trace('queue-next', { next_song_id: next.song_id });
+  return { key: key + 1, songId: next.song_id, meta: playerMetaOf(next) };
+}
+
+// gapless: la riproduzione è entrata nel brano accodato. Se nel frattempo la playlist è
+// cambiata (il brano `key` non è più quello accodato) si passa al successivo da capo
+function onGaplessChange(key, songId) {
+  if (playlistStore.playList[key]?.song_id !== songId) {
+    trace('gapless-mismatch', { key, queued_song_id: songId });
+    playlistStore.gotoNext();
+    return;
+  }
+  gaplessIndex = key;
+  songIndex.value = key;
+}
 
 // computed
 const songTimeText = computed(() => {
@@ -305,7 +353,7 @@ onMounted(() => {
   audioElement.value.addEventListener('ratechange', scheduleLoopJump);
 
   audioElement.value.addEventListener('timeupdate', function() {
-    const val = audioElement.value.currentTime || 0;
+    const val = songTime();
     songCurrentTime.value = val;
     // updates the slider when not dragging
     if (manualSeek.value === false) {
@@ -368,9 +416,8 @@ async function prefetchNext(val) {
     if (!nextSong?.song_id) {
       return;
     }
-    const nextMeta = { title: nextSong.title, artist: nextSong.artist ?? '', album: nextSong.album ?? '', album_id: nextSong.album_id };
     try {
-      await feeder.prefetch(nextSong.song_id, nextMeta);
+      await feeder.prefetch(nextSong.song_id, playerMetaOf(nextSong));
       return;
     }
     catch (err) {
@@ -388,18 +435,24 @@ watch(songIndex, async (val) => {
       URL.revokeObjectURL(coverObjectURL);
       coverObjectURL = null;
     }
+    // brano già in riproduzione sullo stesso MediaSource (gapless): niente load,
+    // solo l'aggiornamento di notifica, statistiche e prefetch qui sotto
+    const gapless = (val === gaplessIndex);
+    gaplessIndex = -1;
     // got another song to play
     if (val !== -1) {
       const shouldPlay = isPlaying.value;
       const song = playlistStore.playList[val];
       const song_id = playlistStore.songId;
 
-      logger.log(`audioplayer: ${shouldPlay ? 'running' : 'loading'} ${song_id}`);
+      logger.log(`audioplayer: ${gapless ? 'gapless' : (shouldPlay ? 'running' : 'loading')} ${song_id}`);
       playlistStore.saveLastPlayed();
-      buffering.value = true;
-      songDuration.value = 0;
+      if (!gapless) {
+        buffering.value = true;
+        songDuration.value = 0; // nel gapless la durata l'ha già impostata lo streamer
+      }
 
-      const playerMeta = { title: song.title, artist: song.artist ?? '', album: song.album ?? '', album_id: song.album_id };
+      const playerMeta = playerMetaOf(song);
 
       // fire-and-forget: streamer.load below resolves near the END of the song
       // (backpressure keeps ~30s buffered ahead), so the notification must not wait for it
@@ -418,6 +471,14 @@ watch(songIndex, async (val) => {
           collectionStore.markPlayed(song.album_id, played);
         }
       });
+
+      if (gapless) {
+        trace('gapless');
+        // nessun 'canplay' arriverà per questo brano: il prefetch del successivo parte subito
+        prefetchReadyIndex = val;
+        prefetchNext(val);
+        return;
+      }
       // start playing as soon as the browser has enough data buffered (before full load)
       // so trimBuffer can work during the loading phase and prevent MSE quota overflow
       const earlyPlay = () => { buffering.value = false; if (isPlaying.value) { music.play(); } };
@@ -435,7 +496,7 @@ watch(songIndex, async (val) => {
       audioElement.value.addEventListener('canplay', onCanPlayPrefetch, { once: true });
 
       trace('load-start', { shouldPlay });
-      await streamer.load(audioElement.value, song_id, playerMeta);
+      await streamer.load(audioElement.value, song_id, playerMeta, { key: val, getNext: queueNext, onSongChange: onGaplessChange });
       trace('load-end', { loadedIndex: val });
 
       audioElement.value.removeEventListener('canplay', earlyPlay);
@@ -492,14 +553,14 @@ function slideStart() {
 
 function slideEnd(evt) {
   const newTime = sliderTime.value; // evt.value
-  audioElement.value.currentTime = newTime; // update needed by drag and drop
+  seekSong(newTime); // update needed by drag and drop
   manualSeek.value = false;
 }
 
 function slideDrag() {
   if (manualSeek.value === false) { // ended drag, needed to update value once more
     const newTime = sliderTime.value;
-    audioElement.value.currentTime = newTime; // update needed by single click on timebar
+    seekSong(newTime); // update needed by single click on timebar
   }
 }
 
@@ -529,12 +590,12 @@ function gotoPrev() {
 
 function skipBack() {
   const newTime = sliderTime.value - 15;
-  audioElement.value.currentTime = newTime; // update needed by single click on timebar
+  seekSong(newTime); // update needed by single click on timebar
 }
 
 function skipForward() {
   const newTime = sliderTime.value + 15;
-  audioElement.value.currentTime = newTime; // update needed by single click on timebar
+  seekSong(newTime); // update needed by single click on timebar
 }
 </script>
 
