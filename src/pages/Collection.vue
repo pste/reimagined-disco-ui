@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onUnmounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import MiniDisc from '@/components/MiniDisc.vue'
 import useCollectionStore from '@/stores/collection'
@@ -10,57 +10,33 @@ const router = useRouter();
 const collectionStore = useCollectionStore();
 const coversStore = useCoversStore();
 
-// rendering progressivo: ~1900 tile tutte insieme bloccavano la pagina prima di mostrare
-// qualcosa. Le prime FIRST_BATCH subito, le altre a blocchi nei momenti liberi del browser
-const FIRST_BATCH = 60;
-const BATCH = 150;
-const renderCount = ref(FIRST_BATCH);
-const renderedItems = computed(() => collectionStore.items.slice(0, renderCount.value));
-let idleHandle = null;
+// paginazione: solo i primi PAGE_SIZE album (dopo filtro e ordinamento), in fondo il
+// pulsante per caricare il blocco successivo
+const PAGE_SIZE = 50;
+const pageCount = ref(1);
+const visibleItems = computed(() => collectionStore.filteredData.slice(0, pageCount.value * PAGE_SIZE));
+const remaining = computed(() => collectionStore.filteredData.length - visibleItems.value.length);
 
-function whenIdle(callback) {
-    if ('requestIdleCallback' in window) {
-        return requestIdleCallback(callback, { timeout: 200 });
-    }
-    return setTimeout(callback, 16);
+function loadMore() {
+    pageCount.value++;
 }
 
-function cancelIdle(handle) {
-    if ('cancelIdleCallback' in window) {
-        cancelIdleCallback(handle);
-    }
-    else {
-        clearTimeout(handle);
-    }
-}
+// nuovo filtro o nuovo ordinamento: si riparte dal primo blocco
+watch(
+    [() => collectionStore.filter.global, () => collectionStore.favoritesOnly, () => collectionStore.sort.collection],
+    () => {
+        pageCount.value = 1;
+    },
+    { deep: true }
+);
 
-function renderMore() {
-    if (idleHandle !== null) {
-        return;
-    }
-    idleHandle = whenIdle(() => {
-        idleHandle = null;
-        if (renderCount.value < collectionStore.items.length) {
-            renderCount.value += BATCH;
-            renderMore();
-        }
-    });
-}
-
-// riparte quando arriva (o cresce) la lista: dalla cache locale o dal server.
-// Lo stesso momento avvia lo scaricamento in background delle cover mancanti
+// quando arriva la lista (dalla cache locale o dal server) parte lo scaricamento
+// in background delle cover mancanti
 watch(() => collectionStore.items.length, (length) => {
-    renderMore();
     if (length > 0) {
         coversStore.prefetchAll(collectionStore.items.map((el) => el.album_id));
     }
 }, { immediate: true });
-
-onUnmounted(() => {
-    if (idleHandle !== null) {
-        cancelIdle(idleHandle);
-    }
-});
 
 // methods
 function gotoArtistAlbum(album_id) {
@@ -78,12 +54,8 @@ function scrollToBottom() {
 
 <template>
     <div class="collection-grid w-full px-4 py-6">
-        <!-- tutte le tile (a blocchi), il filtro le NASCONDE: toglierlo non ricrea niente.
-             Classe e non v-show: la radice di MiniDisc ha la classe PrimeFlex `flex`
-             (display:flex !important), che vince sul display:none inline di v-show -->
-        <template v-for="item in renderedItems" :key="item.album_id">
+        <template v-for="item in visibleItems" :key="item.album_id">
             <MiniDisc
-                :class="{ 'filtered-out': !collectionStore.filteredIds.has(item.album_id) }"
                 class="clickable"
                 :album_id="item.album_id"
                 :artist="item.name"
@@ -95,6 +67,16 @@ function scrollToBottom() {
             >
             </MiniDisc>
         </template>
+    </div>
+
+    <div v-if="remaining > 0" class="flex justify-content-center pb-4">
+        <Button
+            :label="`Load more (${Math.min(remaining, PAGE_SIZE)})`"
+            icon="pi pi-angle-down"
+            severity="secondary"
+            outlined
+            @click="loadMore"
+        />
     </div>
 
     <Button class="scroll-btn scroll-btn-top" icon="pi pi-angle-up" rounded text severity="secondary" size="small" @click="scrollToTop" aria-label="Vai in cima" />
@@ -123,12 +105,6 @@ function scrollToBottom() {
 }
 
 /* .collection-grid è globale in style.css (condivisa con Artists/Artist) */
-
-/* tile esclusa dal filtro. Lo scope aggiunge un attributo alla selezione (.filtered-out[data-v-…]):
-   specificità maggiore di .flex di PrimeFlex, quindi a parità di !important vince questa */
-.filtered-out {
-    display: none !important;
-}
 
 .list {
     display: inline-block;

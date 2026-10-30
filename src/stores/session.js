@@ -17,10 +17,6 @@ const useSessionStore = defineStore('session', () => {
     // data — username restored synchronously so the router guard sees it immediately
     const user = ref({
         name: localStorage.getItem(SESSION_KEY) || "",
-        preferences: {
-            sortCollectionBy: 'played',
-            sortCollectionDirection: 'desc',
-        },
     });
     const isVerifying = ref(false);
 

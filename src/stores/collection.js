@@ -10,8 +10,6 @@ import useParametersStore from '@/stores/parameters'
 const useCollectionStore = defineStore('collection', () => {
     const session = useSessionStore();
     const loadingStore = useLoadingStore();
-    const sortCollectionBy = computed(() => session.user.preferences.sortCollectionBy);
-    const sortCollectionDirection = computed(() => session.user.preferences.sortCollectionDirection);
     //
     const API = inject('API');
     const cacheStore = useCacheStore();
@@ -60,65 +58,116 @@ const useCollectionStore = defineStore('collection', () => {
              el.title.toLowerCase().indexOf(flt) >= 0) );
     });
 
-    // re-sort on sortBy param change
+    // ordinamento per pagina: la Collection parte dagli ultimi ascoltati, la pagina Artisti
+    // in ordine alfabetico. Il menu sort della toolbar cambia quello della pagina corrente
+    const SORT_KEYS = ['name', 'year', 'added', 'played'];
+    const DEFAULT_SORT = {
+        collection: { by: 'played', dir: 'desc' },
+        artists: { by: 'name', dir: 'asc' },
+    };
+    const sort = ref({
+        collection: { ...DEFAULT_SORT.collection },
+        artists: { ...DEFAULT_SORT.artists },
+    });
+
+    // copia ordinata di list secondo { by, dir }; stringhe senza distinzione maiuscole/minuscole
+    function sortList(list, { by, dir }) {
+        const inverted = (dir === 'asc') ? 1 : -1;
+        return [...list].sort((a, b) => {
+            const av = a[by] ?? '';
+            const bv = b[by] ?? '';
+            if (typeof av === 'string' && typeof bv === 'string') {
+                return av.localeCompare(bv, undefined, { sensitivity: 'base' }) * inverted;
+            }
+            if (av < bv) {
+                return -1 * inverted;
+            }
+            if (av > bv) {
+                return 1 * inverted;
+            }
+            return 0;
+        });
+    }
+
+    // re-sort on sort change
     function sortCollection() {
-        const srt = session.user.preferences.sortCollectionBy;
-        const dir = session.user.preferences.sortCollectionDirection;
-        logger.log("collection: sortBy", srt, dir);
-        // sort by these properties
-        if (['name','year','added','played'].includes(srt)) {
-            const inverted = (dir === 'asc')? 1: -1;
-            items.value = [...items.value].sort( (a,b) => {
-                const av = a[srt] ?? '';
-                const bv = b[srt] ?? '';
-                if (av < bv) return -1 * inverted;
-                if (av > bv) return 1 * inverted;
-                return 0;
-            });
+        logger.log("collection: sortBy", sort.value.collection.by, sort.value.collection.dir);
+        items.value = sortList(items.value, sort.value.collection);
+    }
+    watch(() => sort.value.collection, () => {
+        sortCollection();
+    }, { deep: true });
+
+    // stesso campo: inverte la direzione; campo nuovo: parte dalla sua direzione di default
+    function setSort(view, by, defaultDir) {
+        if (!SORT_KEYS.includes(by)) {
+            logger.error("collection: error sortBy", by);
+            return;
+        }
+        const current = sort.value[view];
+        if (current.by === by) {
+            current.dir = (current.dir === 'asc') ? 'desc' : 'asc';
         }
         else {
-            logger.error("collection: error sortBy", srt, dir);
+            sort.value[view] = { by, dir: defaultDir };
         }
     }
-    watch(sortCollectionBy, () => {
-        sortCollection();
-    })
-    watch(sortCollectionDirection, () => {
-        sortCollection();
-    })
 
-    // album che passano il filtro: la griglia della Collection li usa per NASCONDERE le
-    // tile escluse (v-show) invece di distruggerle, così togliere il filtro non ricrea niente
-    const filteredIds = computed(() => new Set(filteredData.value.map((el) => el.album_id)));
+    // ordinamento di partenza della pagina (aprendola dal menu / dal pulsante home)
+    function resetSort(view) {
+        if (sort.value[view].by !== DEFAULT_SORT[view].by || sort.value[view].dir !== DEFAULT_SORT[view].dir) {
+            sort.value[view] = { ...DEFAULT_SORT[view] };
+        }
+    }
+
+    // il valore più grande tra a e b, ignorando i null (ultimo ascolto, aggiunta, anno)
+    function maxOf(a, b) {
+        if (b === null || b === undefined) {
+            return a;
+        }
+        if (a === null || a === undefined || b > a) {
+            return b;
+        }
+        return a;
+    }
 
     return {
-        // all the albums, sorted (the Collection grid renders these and hides the filtered out)
+        // all the albums, sorted by sort.collection
         items,
-        filteredIds,
+        // per-page sort ({ collection, artists }) and its actions (toolbar sort menu)
+        sort,
+        setSort,
+        resetSort,
         // the filter (can be empty to see everyting)
         filter,
         // getter: the filtered collection
         filteredData,
-        // getter: the artists page (one entry per artist, with album count)
+        // getter: the artists page (one entry per artist, with album count), sorted by
+        // sort.artists. Anno, aggiunta e ascolto sono i più recenti tra gli album dell'artista
         artists: computed(() => {
             //
             const map = new Map();
             for (const item of filteredData.value) {
                 const id = item.artist_id;
                 if (map.has(id)) {
-                    const item2 = map.get(id);
-                    item2.albumCount++;
-                    // keeping only the most recent album info as artist cover
-                    // (item has no albumCount, so assign() preserves it)
-                    if (item.year > item2.year) {
-                        Object.assign(item2, item);
-                    }
+                    const artist = map.get(id);
+                    artist.albumCount++;
+                    artist.year = maxOf(artist.year, item.year);
+                    artist.added = maxOf(artist.added, item.added);
+                    artist.played = maxOf(artist.played, item.played);
                 }
                 else {
-                    map.set(id, { ...item, albumCount: 1 });
+                    map.set(id, {
+                        artist_id: id,
+                        name: item.name,
+                        albumCount: 1,
+                        year: item.year,
+                        added: item.added,
+                        played: item.played,
+                    });
                 }
             }
-            return Array.from(map.values())
+            return sortList(Array.from(map.values()), sort.value.artists);
         }),
         //
         resetFilter: function() {
@@ -160,7 +209,7 @@ const useCollectionStore = defineStore('collection', () => {
                 return;
             }
             item.played = played;
-            if (session.user.preferences.sortCollectionBy === 'played') {
+            if (sort.value.collection.by === 'played') {
                 sortCollection();
             }
             saveCache();

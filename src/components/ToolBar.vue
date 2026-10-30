@@ -1,12 +1,13 @@
 <script setup>
 import { ref, computed, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import useSessionStore from '@/stores/session'
 import useCollectionStore from '@/stores/collection'
 import LoadingBar from '@/components/LoadingBar.vue'
 
 //
 const router = useRouter();
+const route = useRoute();
 const session = useSessionStore();
 const collectionStore = useCollectionStore();
 
@@ -37,6 +38,7 @@ const menuItems = ref([
                 label: 'Artists',
                 icon: 'pi pi-users',
                 command: () => {
+                    collectionStore.resetSort('artists');
                     router.push({ name: 'artists' });
                 }
             },
@@ -75,24 +77,18 @@ const toggleMenu = (event) => {
     menuOpen.value.toggle(event);
 };
 
-// menu sort
+// menu sort: agisce sull'ordinamento della pagina corrente (Artisti o Collection)
+const sortView = computed(() => (route.name === 'artists') ? 'artists' : 'collection');
+const currentSort = computed(() => collectionStore.sort[sortView.value]);
+
 function sortHelper(sortBy, defaultDir) {
-    const srt = session.user.preferences.sortCollectionBy;
-    const dir = session.user.preferences.sortCollectionDirection;
-    // same sort, only change direction
-    if (srt === sortBy) {
-        if (dir === 'asc') {
-            session.user.preferences.sortCollectionDirection = 'desc';
-        }
-        else {
-            session.user.preferences.sortCollectionDirection = 'asc';
-        }
-    }
-    // change sort order / reset direction
-    else {
-        session.user.preferences.sortCollectionBy = sortBy;
-        session.user.preferences.sortCollectionDirection = defaultDir;
-    }
+    collectionStore.setSort(sortView.value, sortBy, defaultDir);
+}
+
+// home: la Collection riparte dagli ultimi ascoltati
+function gotoHome() {
+    collectionStore.resetSort('collection');
+    router.push({ name: 'collection' });
 }
 const menuSort = ref();
 const menuItemsSort = ref([
@@ -150,7 +146,7 @@ onUnmounted(() => {
             <!-- Home -->
              <Button 
                 icon="pi pi-home" 
-                @click="router.push({ name: 'collection' })" 
+                @click="gotoHome" 
                 class="mr-2" 
                 text severity="secondary" 
                 aria-haspopup="true" 
@@ -169,8 +165,8 @@ onUnmounted(() => {
                 <template #item="{ item, props }">
                     <a v-bind="props.action" class="flex align-items-center gap-2">
                         <span>{{ item.label }}</span>
-                        <i v-if="session.user.preferences.sortCollectionBy === item.key"
-                           :class="session.user.preferences.sortCollectionDirection === 'asc' ? 'pi pi-arrow-up' : 'pi pi-arrow-down'"
+                        <i v-if="currentSort.by === item.key"
+                           :class="currentSort.dir === 'asc' ? 'pi pi-arrow-up' : 'pi pi-arrow-down'"
                            class="ml-auto text-primary text-xs"
                         />
                     </a>
