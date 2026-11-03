@@ -36,6 +36,19 @@ const image = ref(null); // can't have async computed, so I'm using a ref
 
 const songListbox = useTemplateRef('songListbox');
 
+// album con più dischi: almeno due disc_nr diversi tra i brani
+const multiDisc = computed(() => new Set(albumSongs.value.map(s => s.disc_nr)).size > 1);
+
+// numero mostrato in playlist: traccia a 2 cifre, preceduta dal disco (1 cifra) se multi-disco
+// es. disco 1 traccia 1 → "101" (multi-disco) oppure "01" (disco singolo)
+function trackLabel(song) {
+    const track = String(song.track_nr ?? 0).padStart(2, '0');
+    if (multiDisc.value) {
+        return `${song.disc_nr ?? 1}${track}`;
+    }
+    return track;
+}
+
 // auto-scroll: keep the playing song as the 2nd visible row (one song above it
 // stays in view). Scrolls the listbox container only (not the page); no-op if the
 // playing song is not part of the album shown in this view
@@ -271,7 +284,7 @@ onUnmounted(() => {
                             >
                                 <template #option="slotProps">
                                     <div class="flex align-items-center w-full" @click="selectSong(slotProps.option)">
-                                        <div class="flex-grow-1">{{ slotProps.option.track_nr }}. {{ slotProps.option.title }}</div>
+                                        <div class="flex-grow-1">{{ trackLabel(slotProps.option) }}. {{ slotProps.option.title }}</div>
                                         <i v-if="cacheStore.cachedSongIds.includes(slotProps.option.song_id)" class="pi pi-arrow-circle-down cached-icon" title="Brano in cache" />
                                         <i v-else-if="cacheStore.downloadingSongIds.includes(slotProps.option.song_id)" class="pi pi-arrow-circle-down cached-icon downloading" title="In scaricamento" />
                                     </div>
