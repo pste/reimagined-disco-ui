@@ -183,11 +183,25 @@ function secsToTime(secs) {
 };
 
 // con il gapless più brani stanno sulla stessa timeline dell'elemento audio:
-// il tempo del brano è currentTime meno l'inizio del brano (streamer.songBase)
+// il tempo del brano è currentTime meno l'inizio del brano (streamer.songBase).
+// Limitato a [0, durata]: la fine reale del brano sulla timeline (inizio del brano accodato)
+// può superare di poco la durata dichiarata, e nel tick del passaggio gapless questo
+// listener gira prima di quello dello streamer (songBase ancora del brano vecchio):
+// senza limite il tempo residuo diventava negativo ("-0-1:0-1")
 function songTime() {
-  return Math.max(0, (audioElement.value.currentTime || 0) - streamer.songBase.value);
+  const t = Math.max(0, (audioElement.value.currentTime || 0) - streamer.songBase.value);
+  if (songDuration.value > 0) {
+    return Math.min(t, songDuration.value);
+  }
+  return t;
 }
+// seek dentro il brano in riproduzione; arrivare alla fine (slider in fondo, +15s oltre
+// la durata) = passare al brano successivo, invece di un seek oltre i dati del brano
 function seekSong(seconds) {
+  if (songDuration.value > 0 && seconds >= songDuration.value) {
+    playlistStore.gotoNext();
+    return;
+  }
   audioElement.value.currentTime = streamer.songBase.value + Math.max(0, seconds);
 }
 

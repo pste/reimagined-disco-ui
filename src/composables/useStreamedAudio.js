@@ -344,6 +344,14 @@ export function useStreamedAudio() {
 
       function onLoopError(err, gen) {
         if (gen !== generation) { return; } // loop già superato da un seek: il suo errore non conta
+        // load superato da stop()/skip: mediaSource e sourceBuffer (variabili del modulo) sono
+        // già quelli del load successivo, quindi un errore arrivato in ritardo (es. retry di rete
+        // del feeder ancora in corso al momento dello skip) non deve toccarli né mostrare toast
+        if (signal.aborted) {
+          loopError = err;
+          loopEnded();
+          return;
+        }
         // errore su un brano accodato (es. rete giù oltre i retry del feeder): il brano in
         // riproduzione non c'entra, finisce normalmente. Si toglie dal buffer la parte già
         // appesa del brano accodato e si chiude lo stream: a fine brano 'ended' → gotoNext,
