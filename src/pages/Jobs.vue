@@ -4,7 +4,8 @@ import { inject, ref, onMounted } from 'vue'
 const API = inject('API');
 const jobs = ref([]);
 
-const JOB_TYPES = ['filescan', 'fullscan'];
+// libcheck: report dei problemi della libreria, da scaricare a job concluso
+const JOB_TYPES = ['filescan', 'fullscan', 'libcheck'];
 
 function nextTenMinutes() {
     const d = new Date();
@@ -44,6 +45,20 @@ async function addJob() {
     await API.post('/jobs', { name: newJob.value.name, when: newJob.value.when });
     newJob.value = { name: null, when: nextTenMinutes() };
     await load();
+}
+
+// scarica il report del job come file di testo
+async function downloadReport(job) {
+    const blob = await API.getBlob(`/jobs/${job.job_id}/report`);
+    if (!blob) {
+        return;
+    }
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${job.name}-${job.job_id}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
 }
 
 async function deleteJob(job_id) {
@@ -115,6 +130,21 @@ onMounted(load);
                     <Column header="Risultato">
                         <template #body="{ data }">
                             <span class="text-sm text-color-secondary">{{ data.result || '—' }}</span>
+                        </template>
+                    </Column>
+
+                    <Column style="width: 3rem">
+                        <template #body="{ data }">
+                            <Button
+                                v-if="data.has_report"
+                                icon="pi pi-download"
+                                severity="secondary"
+                                size="small"
+                                text
+                                rounded
+                                title="Scarica il report"
+                                @click="downloadReport(data)"
+                            />
                         </template>
                     </Column>
 
