@@ -813,44 +813,77 @@ function skipForward() {
   font-size: 0.9rem;
 }
 
-/* Mobile: two rows */
+/* Mobile: tre righe
+   1) home · tempo · volume · mute (secondari)
+   2) slider del tempo a tutta larghezza
+   3) prev · indietro · play · avanti · next, grandi, distribuiti su tutta la riga
+   Lo slider ha una riga sua perché coi pulsanti grandi accanto resterebbe troppo corto */
 @media (max-width: 767px) {
   .player-layout {
     flex-wrap: wrap;
+    justify-content: space-between;
     padding: 0.25rem 0.5rem;
-    gap: 0.25rem;
+    /* niente gap orizzontale: i pulsanti li distribuisce space-between, e a 360px
+       un gap fisso farebbe andare a capo il "next" */
+    row-gap: 0.25rem;
+    column-gap: 0;
   }
 
-  /* Row 1 order */
+  /* Riga 1 */
   .p-home       { order: 1; }
-  .p-play       { order: 2; }
-  .p-time       { order: 3; }
-  .p-vol        { order: 4; width: 60px; margin-left: auto; }
-  .p-mute       { order: 5; }
+  .p-time       { order: 2; margin-left: 0.25rem; }
+  .p-vol        { order: 3; width: 60px; margin: 0 0.25rem 0 auto; }
+  .p-mute       { order: 4; }
 
-  /* Row break */
-  .p-row-break  { order: 6; display: block; width: 100%; flex-basis: 100%; height: 0; }
+  /* Riga 2: flex-basis 100% manda lo slider su una riga sua (il p-row-break non serve) */
+  .p-slider-time  { order: 5; flex: 1 1 100%; padding: 0.5rem 0.75rem; }
 
-  /* Row 2 order */
-  .p-prev         { order: 7; }
-  .p-skip-back    { order: 8; }
-  .p-slider-time  { order: 9; flex: 1; }
-  .p-skip-fw      { order: 10; }
-  .p-next         { order: 11; }
+  /* Riga 3 */
+  .p-prev         { order: 6; }
+  .p-skip-back    { order: 7; }
+  .p-play         { order: 8; }
+  .p-skip-fw      { order: 9; }
+  .p-next         { order: 10; }
 
-  /* Larger buttons on mobile (player un filo più grande) */
-  :deep(.p-button) {
+  /* pulsanti secondari (riga 1): misura di prima. Il prefisso .player-layout serve: con
+     la sola :deep(.p-button) l'height di PrimeVue per i tondi solo-icona (stessa
+     specificità, caricata dopo) vinceva → pulsanti 60x40, ovali */
+  .player-layout :deep(.p-button) {
     width: 3.75rem;
     height: 3.75rem;
   }
-  :deep(.p-button .p-button-icon) {
+  .player-layout :deep(.p-button .p-button-icon) {
     font-size: 1.4rem;
   }
+
+  /* trasporto (riga 3) più grande, play ancora di più. min() con vw: su un telefono
+     da 360px i 5 pulsanti stanno comunque in una riga */
+  .player-layout :deep(.p-prev.p-button),
+  .player-layout :deep(.p-skip-back.p-button),
+  .player-layout :deep(.p-skip-fw.p-button),
+  .player-layout :deep(.p-next.p-button) {
+    width: min(4.25rem, 17vw);
+    height: min(4.25rem, 17vw);
+  }
+  .player-layout :deep(.p-play.p-button) {
+    width: min(4.75rem, 19vw);
+    height: min(4.75rem, 19vw);
+  }
+  .player-layout :deep(.p-prev .p-button-icon),
+  .player-layout :deep(.p-skip-back .p-button-icon),
+  .player-layout :deep(.p-skip-fw .p-button-icon),
+  .player-layout :deep(.p-next .p-button-icon) {
+    font-size: 1.6rem;
+  }
+  .player-layout :deep(.p-play .p-button-icon) {
+    font-size: 2rem;
+  }
+
   .song-info-row {
-    font-size: 0.8rem;
+    font-size: 0.9rem;
   }
   .p-time {
-    font-size: 0.85rem;
+    font-size: 0.95rem;
   }
 
   /* la riga strumenti resta compatta anche col bump mobile */
