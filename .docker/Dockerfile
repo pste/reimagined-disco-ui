@@ -1,5 +1,5 @@
 ## STAGE 1 ##################################
-FROM node:24-alpine AS build
+FROM node:24.22.2-alpine AS build
 
 # SETUP npm
 RUN npm config set engine-strict true
@@ -22,7 +22,7 @@ RUN npm run build
 
 ## STAGE 2 ##################################
 #FROM nginx:alpine
-FROM nginxinc/nginx-unprivileged:alpine
+FROM nginx/nginx-unprivileged:1.31.8-alpine
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY .docker/nginx.conf /etc/nginx/conf.d/default.conf
 
