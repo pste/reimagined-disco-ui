@@ -561,8 +561,18 @@ watch(playbackRate, (val) => {
 })
 
 // events
-function slideStart() {
-  manualSeek.value = true;
+// inizio trascinamento: pointerdown vale per mouse e dito (col dito mousedown non arriva).
+// Solo sul pallino: un tocco sulla barra non è un trascinamento, lo Slider non emette
+// slideend e il seek lo fa slideDrag
+function slideStart(evt) {
+  if (evt.target.getAttribute('data-pc-section') === 'handle') {
+    manualSeek.value = true;
+  }
+}
+
+// gesto interrotto dal sistema: niente seek, lo slider torna a seguire il brano
+function slideCancel() {
+  manualSeek.value = false;
 }
 
 function slideEnd(evt) {
@@ -667,8 +677,9 @@ function skipForward() {
                 :min="0"
                 :max="songDuration > 0 ? songDuration : 1"
                 :disabled="songDuration === 0"
-                @mousedown="slideStart"
-                @mouseup="slideEnd"
+                @pointerdown="slideStart"
+                @pointercancel="slideCancel"
+                @slideend="slideEnd"
                 @update:modelValue="slideDrag"
                 :show-value="false"
             />
