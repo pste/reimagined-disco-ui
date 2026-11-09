@@ -153,16 +153,6 @@ async function cacheAlbum() {
     }
 }
 
-// clear queue and restarts playing
-async function playFromStart() {
-    playlistStore.clear();
-    playlistStore.enqueue(albumSongs.value);
-    await nextTick(); // let the watcher process songIndex=-1 before setting 0
-    playlistStore.isPlaying = true;
-    playlistStore.play(0);
-    selectedSong.value = playlistStore.songId;
-}
-
 // respond to user input over the playlist
 async function selectSong(song) {
     selectedSong.value = song.song_id;
@@ -227,45 +217,40 @@ onUnmounted(() => {
                          la colonna non si stringe sotto la larghezza minima del suo contenuto
                          (titolo + 5 pulsanti) e la playlist esce dal bordo destro della card -->
                     <div class="flex flex-column flex-grow-1 min-w-0 p-0 justify-content-start">
-                        <!-- flex-wrap: se lo spazio non basta i pulsanti vanno a capo sotto il titolo -->
+                        <!-- flex-wrap: se lo spazio non basta i pulsanti vanno a capo sotto il titolo,
+                             tutti insieme perché stanno in un gruppo a parte -->
                         <div class="flex flex-wrap align-items-center gap-2 mb-2">
                             <span class="text-xl font-bold">{{ album?.title }}</span>
-                            <Button
-                                icon="pi pi-play"
-                                rounded
-                                text
-                                severity="secondary"
-                                :disabled="albumSongs.length === 0"
-                                @click="playFromStart"
-                            />
-                            <Button
-                                icon="pi pi-pencil"
-                                rounded
-                                text
-                                severity="secondary"
-                                :disabled="albumSongs.length === 0"
-                                @click="router.push({ name: 'album-edit', params: { albumid: route.params.albumid } })"
-                                aria-label="Modifica album"
-                            />
-                            <Button
-                                icon="pi pi-download"
-                                rounded
-                                text
-                                severity="secondary"
-                                :loading="caching"
-                                :disabled="albumSongs.length === 0"
-                                @click="cacheAlbum"
-                                aria-label="Scarica album in cache"
-                            />
-                            <span v-if="caching" class="text-sm text-color-secondary">{{ cacheProgress }}/{{ albumSongs.length }}</span>
-                            <Button
-                                :icon="album?.favorite ? 'pi pi-star-fill' : 'pi pi-star'"
-                                rounded
-                                text
-                                :severity="album?.favorite ? 'warn' : 'secondary'"
-                                @click="collectionStore.toggleFavorite(route.params.albumid)"
-                                :aria-label="album?.favorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'"
-                            />
+                            <div class="flex align-items-center gap-2">
+                                <Button
+                                    icon="pi pi-pencil"
+                                    rounded
+                                    text
+                                    severity="secondary"
+                                    :disabled="albumSongs.length === 0"
+                                    @click="router.push({ name: 'album-edit', params: { albumid: route.params.albumid } })"
+                                    aria-label="Modifica album"
+                                />
+                                <Button
+                                    icon="pi pi-download"
+                                    rounded
+                                    text
+                                    severity="secondary"
+                                    :loading="caching"
+                                    :disabled="albumSongs.length === 0"
+                                    @click="cacheAlbum"
+                                    aria-label="Scarica album in cache"
+                                />
+                                <span v-if="caching" class="text-sm text-color-secondary">{{ cacheProgress }}/{{ albumSongs.length }}</span>
+                                <Button
+                                    :icon="album?.favorite ? 'pi pi-star-fill' : 'pi pi-star'"
+                                    rounded
+                                    text
+                                    :severity="album?.favorite ? 'warn' : 'secondary'"
+                                    @click="collectionStore.toggleFavorite(route.params.albumid)"
+                                    :aria-label="album?.favorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'"
+                                />
+                            </div>
                         </div>
                         <!-- nome artista → pagina artista (discografia) -->
                         <div class="mb-3">
