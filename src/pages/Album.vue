@@ -344,7 +344,8 @@ onUnmounted(() => {
 
 @media (max-width: 767px) {
     .listbox-songs {
-        --playlist-height: 13vh;
+        /* almeno 6 brani visibili (riga ~2.5rem), con margine per un titolo su due righe */
+        --playlist-height: 18rem;
     }
 }
 </style>
