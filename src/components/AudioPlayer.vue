@@ -608,8 +608,20 @@ function gotoNext() {
   playlistStore.gotoNext();
 }
 
+// tasto back: un tap riporta subito a inizio brano, un secondo tap ravvicinato va al
+// brano precedente (la notifica Android e Android Auto vanno sempre al precedente)
+const DOUBLE_TAP_MS = 400;
+let lastBackTap = 0;
+
 function gotoPrev() {
-  playlistStore.gotoPrev();
+  const now = Date.now();
+  if (now - lastBackTap <= DOUBLE_TAP_MS) {
+    lastBackTap = 0;
+    playlistStore.gotoPrev();
+    return;
+  }
+  lastBackTap = now;
+  seekSong(0);
 }
 
 function skipBack() {
