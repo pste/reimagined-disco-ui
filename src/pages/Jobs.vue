@@ -1,5 +1,6 @@
 <script setup>
 import { inject, ref, onMounted } from 'vue'
+import { saveBlob } from '@/composables/saveBlob'
 
 const API = inject('API');
 const jobs = ref([]);
@@ -53,12 +54,7 @@ async function downloadReport(job) {
     if (!blob) {
         return;
     }
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${job.name}-${job.job_id}.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
+    saveBlob(blob, `${job.name}-${job.job_id}.txt`);
 }
 
 async function deleteJob(job_id) {

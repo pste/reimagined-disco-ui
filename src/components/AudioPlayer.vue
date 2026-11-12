@@ -10,6 +10,7 @@ import useClientLogStore from '@/stores/clientLog'
 import { useStreamedAudio } from '@/composables/useStreamedAudio'
 import { useCacheFeeder } from '@/composables/useCacheFeeder'
 import logger from '@/plugins/logger'
+import { saveBlob } from '@/composables/saveBlob'
 
 const API = inject('API');
 const router = useRouter();
@@ -68,6 +69,26 @@ function clampRate(r) {
 function decRate() { playbackRate.value = clampRate(playbackRate.value - RATE_STEP); }
 function incRate() { playbackRate.value = clampRate(playbackRate.value + RATE_STEP); }
 function resetRate() { playbackRate.value = 1; }
+
+// download dell'mp3 del brano corrente (file intero dal server, tag ID3 quelli su disco)
+const downloading = ref(false);
+async function downloadSong() {
+  const song = currentSong.value;
+  if (!song?.song_id || downloading.value) {
+    return;
+  }
+  downloading.value = true;
+  try {
+    const blob = await API.getBlob('/download/song', { id: song.song_id });
+    if (blob) {
+      // nome "artista - titolo.mp3", senza i caratteri vietati nei nomi file
+      const name = `${song.artist} - ${song.title}`.replace(/[\\/:*?"<>|]/g, '_');
+      saveBlob(blob, `${name}.mp3`);
+    }
+  } finally {
+    downloading.value = false;
+  }
+}
 
 // loop A-B (solo sessione, si azzera cambiando brano): A = inizio, B = fine. Premendo B
 // si salta subito ad A e il loop parte. Il salto B→A lo fa un timer ricalcolato a ogni
@@ -660,6 +681,10 @@ function skipForward() {
             <span v-if="loopActive" class="loop-label">{{ loopText }}</span>
           </div>
           <!-- TODO: bookmark del brano qui -->
+          <!-- download dell'mp3 del brano corrente -->
+          <div class="tool-group">
+            <Button class="rate-btn" icon="pi pi-download" @click="downloadSong" :loading="downloading" :disabled="!currentSong" severity="secondary" rounded text title="Scarica l'mp3" aria-label="scarica mp3" />
+          </div>
           <!-- velocità: in fondo alla riga, allineata a destra -->
           <div class="tool-group rate-group">
             <Button class="rate-btn" icon="pi pi-minus" @click="decRate" :disabled="playbackRate <= RATE_MIN" severity="secondary" rounded text aria-label="rallenta" />
