@@ -232,19 +232,23 @@ function playerMetaOf(song) {
 }
 
 // gapless: lo streamer ha appeso tutto il brano `key` e chiede il successivo da accodare
+// (il successivo segue l'ordine di riproduzione dello store: con lo shuffle non è key + 1)
 function queueNext(key) {
-  const next = playlistStore.playList[key + 1];
+  const nextKey = playlistStore.nextIndex(key);
+  const next = playlistStore.playList[nextKey];
   if (!next?.song_id) {
     return null;
   }
   trace('queue-next', { next_song_id: next.song_id });
-  return { key: key + 1, songId: next.song_id, meta: playerMetaOf(next) };
+  return { key: nextKey, songId: next.song_id, meta: playerMetaOf(next) };
 }
 
 // gapless: la riproduzione è entrata nel brano accodato. Se nel frattempo la playlist è
-// cambiata (il brano `key` non è più quello accodato) si passa al successivo da capo
+// cambiata (il brano `key` non è più quello accodato, o lo shuffle ha cambiato il
+// successivo) si passa al successivo da capo
 function onGaplessChange(key, songId) {
-  if (playlistStore.playList[key]?.song_id !== songId) {
+  const expected = playlistStore.nextIndex(songIndex.value);
+  if (key !== expected || playlistStore.playList[key]?.song_id !== songId) {
     trace('gapless-mismatch', { key, queued_song_id: songId });
     playlistStore.gotoNext();
     return;
@@ -447,7 +451,7 @@ async function prefetchNext(val) {
   prefetchToken += 1;
   const token = prefetchToken;
   while (token === prefetchToken && songIndex.value === val) {
-    const nextSong = playlistStore.playList[val + 1];
+    const nextSong = playlistStore.playList[playlistStore.nextIndex(val)];
     if (!nextSong?.song_id) {
       return;
     }
@@ -556,10 +560,11 @@ watch(songIndex, async (val) => {
 })
 
 // il brano successivo può cambiare senza cambio di brano corrente (album accodato mentre
-// suona l'ultimo brano, playlist modificata): se il corrente è già pronto, si riparte.
+// suona l'ultimo brano, playlist modificata, shuffle attivato/disattivato): se il corrente
+// è già pronto, si riparte.
 // Al cambio di songIndex non fa nulla: lì ci pensa il 'canplay' del nuovo brano.
 // NB: dichiarato DOPO watch(songIndex), così nello stesso flush gira dopo il reset di prefetchReadyIndex
-watch(() => playlistStore.playList[songIndex.value + 1]?.song_id, (nextId) => {
+watch(() => playlistStore.playList[playlistStore.nextIndex(songIndex.value)]?.song_id, (nextId) => {
   if (nextId && prefetchReadyIndex === songIndex.value) {
     prefetchNext(songIndex.value);
   }
@@ -667,6 +672,8 @@ function skipForward() {
             <span class="song-sep"> · </span>
             <span class="song-title">{{ currentSong.title }}</span>
           </span>
+          <!-- shuffle: piccolo come il toggle strumenti, acceso quando attivo -->
+          <Button class="tools-toggle" icon="pi pi-arrow-right-arrow-left" @click="playlistStore.toggleShuffle()" :severity="playlistStore.shuffle ? 'primary' : 'secondary'" rounded text title="Riproduzione casuale" aria-label="shuffle" />
           <!-- toggle riga strumenti (rate / in futuro bookmark): piccolo, fuori dalle righe
                principali, così su mobile la prima riga resta a 3 pulsanti e ci sta in larghezza -->
           <Button class="tools-toggle" icon="pi pi-sliders-h" @click="showTools = !showTools" :severity="showTools ? 'primary' : 'secondary'" rounded text aria-label="strumenti" />
