@@ -73,6 +73,7 @@ const useSessionStore = defineStore('session', () => {
 
     async function userLogout() {
         playlistStore.clear();
+        playlistStore.forgetLastPlayed();
         clearSession();
 
         // fire-and-forget: the session may already be expired on the server

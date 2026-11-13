@@ -20,7 +20,6 @@ function streamErrorMessage(err) {
 }
 
 export function useStreamedAudio() {
-  const idxDB = inject('idxDB');
   const feeder = useCacheFeeder();
   const errorsStore = useErrorsStore();
   const playlistStore = usePlaylistStore();
@@ -293,7 +292,10 @@ export function useStreamedAudio() {
               }
               // duration nota anche a MSE: senza, il browser clampa i seek oltre i dati già appesi
               const end = seg.base + songMeta.duration;
-              if (!(mediaSource.duration >= end)) { // NaN all'inizio
+              // la durata si imposta se non è ancora nota o se è più corta. NB: dopo il primo
+              // append di un mp3 Chrome la mette a Infinity (non NaN): senza isFinite il
+              // confronto la dava per buona e i seek restavano limitati al buffer
+              if (!Number.isFinite(mediaSource.duration) || mediaSource.duration < end) {
                 try { mediaSource.duration = end; } catch (_) { /* updating: ignore */ }
               }
             }
@@ -526,15 +528,5 @@ export function useStreamedAudio() {
     // continua ad appendere i brani successivi, e solo il prossimo stop() la deve fermare
   }
 
-  // db cleanup
-  async function sweep() {
-    try {
-      await idxDB.sweep(CACHE_TABLE);
-    }
-    catch (err) {
-      logger.error('streamedAudio sweep error:', err, 'Going on ...');
-    }
-  }
-
-  return { load, stop, sweep, setKeepFrom, songBase, loading, error };
+  return { load, stop, setKeepFrom, songBase, loading, error };
 }

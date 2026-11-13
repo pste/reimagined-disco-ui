@@ -106,6 +106,11 @@ const usePlaylistStore = defineStore('playlist', () => {
         localStorage.setItem(LAST_PLAYED_KEY, JSON.stringify(playList.value));
     }
 
+    // al logout: un altro utente sullo stesso browser non deve ritrovarsi questa playlist
+    function forgetLastPlayed() {
+        localStorage.removeItem(LAST_PLAYED_KEY);
+    }
+
     function restoreLastPlayed() {
         const raw = localStorage.getItem(LAST_PLAYED_KEY);
         if (!raw) return;
@@ -181,6 +186,7 @@ const usePlaylistStore = defineStore('playlist', () => {
         enqueue,
         saveLastPlayed,
         restoreLastPlayed,
+        forgetLastPlayed,
         nextIndex,
         toggleShuffle,
         // player

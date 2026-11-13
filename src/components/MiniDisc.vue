@@ -19,14 +19,26 @@ const image = ref(null);
 const cardEl = useTemplateRef('card');
 let observer = null;
 
+// libera l'object URL della cover mostrata (ogni createObjectURL tiene vivo il Blob)
+function revokeImage() {
+    if (image.value) {
+        URL.revokeObjectURL(image.value);
+        image.value = null;
+    }
+}
+
 async function loadImage() {
     const id = props?.album_id;
     const buffer = await coversStore.get(id);
+    // la tile è passata a un altro album mentre la cover arrivava (riordino)
+    if (props.album_id !== id) {
+        return;
+    }
+    revokeImage();
     if (buffer) {
         image.value = URL.createObjectURL(buffer);
     } else {
         logger.log("Disc: cover not found for", id);
-        image.value = null;
     }
 }
 
@@ -54,15 +66,13 @@ onMounted(() => scheduleLoad());
 // se album_id cambia (es. resort), ricarica
 watch(() => props.album_id, () => {
     teardown();
-    image.value = null;
+    revokeImage();
     scheduleLoad();
 });
 
 onUnmounted(() => {
     teardown();
-    if (image.value) {
-        URL.revokeObjectURL(image.value);
-    }
+    revokeImage();
 })
 </script>
 

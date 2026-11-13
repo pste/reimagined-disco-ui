@@ -16,15 +16,24 @@ const pwd2 = ref('');
 
 // methods
 async function loadSources() {
-    sources.value = await API.get('/sources'); // { source_id, path }
+    sources.value = await API.get('/sources') ?? []; // { source_id, path }
 }
 
 async function savePassword() {
+    if (!pwd1.value) {
+        errorsStore.showError("Password is empty!");
+        return;
+    }
     if (pwd1.value !== pwd2.value) {
         errorsStore.showError("Password does not match!");
+        return;
     }
-    else {
-        await API.post('/user/password', { value: pwd1.value });
+    // su errore il client API mostra il toast e restituisce undefined
+    const res = await API.post('/user/password', { value: pwd1.value });
+    if (res !== undefined) {
+        pwd1.value = '';
+        pwd2.value = '';
+        errorsStore.showMessage("Password changed");
     }
 }
 

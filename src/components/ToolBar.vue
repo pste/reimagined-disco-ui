@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import useSessionStore from '@/stores/session'
 import useCollectionStore from '@/stores/collection'
@@ -121,11 +121,6 @@ const toggleMenuSort = (event) => {
 function logout() {
     session.userLogout();
 }
-
-// lifecycle
-onUnmounted(() => {
-    logout();
-})
 </script>
 
 <template>

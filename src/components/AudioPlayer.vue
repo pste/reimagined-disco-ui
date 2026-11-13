@@ -317,7 +317,9 @@ onUnmounted(() => {
 
 // init audioelement events
 onMounted(() => {
-  streamer.sweep();
+  // pulizia dei chunk scaduti: dallo store cache (non da idxDB diretto), così anche le
+  // icone "in cache" della pagina album si aggiornano
+  cacheStore.sweep().catch((err) => logger.error('audioplayer: cache sweep failed', err));
   watchPlayerHeight();
 
   audioElement.value.onended = (event) => {

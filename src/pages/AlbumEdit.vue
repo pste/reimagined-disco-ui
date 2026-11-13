@@ -56,7 +56,8 @@ async function load() {
         });
 
         const blob = await coversStore.get(route.params.albumid);
-        if (blob) { image.value = URL.createObjectURL(blob); }
+        if (image.value) { URL.revokeObjectURL(image.value); }
+        image.value = blob ? URL.createObjectURL(blob) : null;
     }
     finally {
         loadingStore.stop();
@@ -99,6 +100,13 @@ async function save() {
     }
 }
 
+// Annulla: si esce dalla modifica e si ricaricano i valori salvati (senza, a schermo
+// restavano quelli appena digitati)
+async function cancel() {
+    editing.value = false;
+    await load();
+}
+
 // la scrittura su file è in coda (job id3write): intanto aggiorniamo cache + anteprima col Blob scelto
 async function onCoverSaved(blob) {
     await coversStore.setLocal(route.params.albumid, blob);
@@ -135,7 +143,7 @@ onUnmounted(() => { if (image.value) { URL.revokeObjectURL(image.value); } });
                     <span class="flex-grow-1 card-title-text">{{ album?.title ?? 'Dettagli album' }}</span>
                     <template v-if="editing">
                         <Button label="Salva" icon="pi pi-check" severity="primary" size="small" text :loading="saving" @click="save" />
-                        <Button label="Annulla" icon="pi pi-times" severity="danger" size="small" text :disabled="saving" @click="editing = false" />
+                        <Button label="Annulla" icon="pi pi-times" severity="danger" size="small" text :disabled="saving" @click="cancel" />
                     </template>
                     <Button v-else label="Modifica" icon="pi pi-pencil" severity="secondary" size="small" text @click="editing = true" />
                 </div>

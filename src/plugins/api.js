@@ -40,7 +40,8 @@ async function makeRequest(method, headers, url, querystring, body, timeoutMs) {
             throw new Error('401 Unauthorized');
         }
         else {
-            const data = await res.json();
+            // il corpo può non essere JSON (es. pagina HTML di un 502/504 del proxy)
+            const data = await res.json().catch(() => null);
             const msg = data?.error || data?.message || "Generic Fetch Error";
             throw new Error(`HTTP code (${resStatus}): ${msg}`);
         }
