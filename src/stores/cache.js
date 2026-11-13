@@ -30,11 +30,13 @@ const useCacheStore = defineStore('cache', () => {
     });
 
     // brani COMPLETI in cache (tutti i chunk presenti; il totale è noto dal songMeta del chunk 1)
+    // (Set: la pagina album fa una ricerca per ogni riga della playlist)
     const cachedSongIds = computed(() => {
-        return [...cachedSongMap.value] // to array of arrays: [ [k,v], [k,v], ... ]
+        const ids = [...cachedSongMap.value] // to array of arrays: [ [k,v], [k,v], ... ]
             .filter(([k, v]) => v.total && v.chunks.size >= v.total) // filter only full songs
-            .map(([k, v]) => k) // return only array of keys
+            .map(([k, v]) => k) // only the keys
             ;
+        return new Set(ids);
     })
 
     // brani in SCARICAMENTO: totale noto (dal chunk 1) ma non ancora tutti i chunk in cache.
@@ -42,10 +44,11 @@ const useCacheStore = defineStore('cache', () => {
     // riempie e qui compare finché non diventa completo. I record vecchi senza total restano
     // fuori da entrambi (come prima), si risanano al riascolto quando il chunk 1 riporta il songMeta
     const downloadingSongIds = computed(() => {
-        return [...cachedSongMap.value]
+        const ids = [...cachedSongMap.value]
             .filter(([k, v]) => v.total && v.chunks.size < v.total) // partial songs
             .map(([k, v]) => k)
             ;
+        return new Set(ids);
     })
 
     // stato cache iniziale letto dal DB.
@@ -79,8 +82,8 @@ const useCacheStore = defineStore('cache', () => {
         cachedSongMap.value = new Map(cachedSongMap.value);
     }
 
-    // rinnova la scadenza di TUTTI i chunk in cache del brano (idxDB.get fa touch del TTL
-    // a ogni lettura): chiamato all'avvio del play, copre anche i chunk di coda che lo
+    // rinnova la scadenza di TUTTI i chunk in cache del brano (idxDB.get rinnova il TTL dei
+    // record letti, al massimo una volta all'ora per record): chiamato all'avvio del play, copre anche i chunk di coda che lo
     // streamer non leggerebbe se il brano viene cambiato a metà. Non scarica nulla.
     async function touchSong(songId) {
         for (let chunkId = 1; chunkId <= MAX_CHUNKS_GUARD; chunkId++) {
@@ -122,11 +125,13 @@ const useCacheStore = defineStore('cache', () => {
     }
 
     // delete all the cached chunks of a song, then update the reactive Map
+    // (solo le chiavi, "songId_chunkId": non serve caricare tutti i record della tabella)
     async function removeSong(songId) {
-        const records = await idxDB.getAll(CACHE_TABLE_CHUNKS);
-        for (const record of records) {
-            if (record.data?.songId === songId) {
-                await idxDB.remove(CACHE_TABLE_CHUNKS, record.id);
+        const prefix = cacheKey(songId, '');
+        const keys = await idxDB.getAllKeys(CACHE_TABLE_CHUNKS);
+        for (const key of keys) {
+            if (String(key).startsWith(prefix)) {
+                await idxDB.remove(CACHE_TABLE_CHUNKS, key);
             }
         }
         cachedSongMap.value.delete(songId);
@@ -135,10 +140,7 @@ const useCacheStore = defineStore('cache', () => {
 
     // empty the whole chunks cache, then reset the reactive Map
     async function removeAll() {
-        const records = await idxDB.getAll(CACHE_TABLE_CHUNKS);
-        for (const record of records) {
-            await idxDB.remove(CACHE_TABLE_CHUNKS, record.id);
-        }
+        await idxDB.clear(CACHE_TABLE_CHUNKS);
         cachedSongMap.value = new Map();
     }
 

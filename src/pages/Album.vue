@@ -275,8 +275,8 @@ onUnmounted(() => {
                                 <template #option="slotProps">
                                     <div class="flex align-items-center w-full" @click="selectSong(slotProps.option)">
                                         <div class="flex-grow-1">{{ trackLabel(slotProps.option) }}. {{ slotProps.option.title }}</div>
-                                        <i v-if="cacheStore.cachedSongIds.includes(slotProps.option.song_id)" class="pi pi-arrow-circle-down cached-icon" title="Brano in cache" />
-                                        <i v-else-if="cacheStore.downloadingSongIds.includes(slotProps.option.song_id)" class="pi pi-arrow-circle-down cached-icon downloading" title="In scaricamento" />
+                                        <i v-if="cacheStore.cachedSongIds.has(slotProps.option.song_id)" class="pi pi-arrow-circle-down cached-icon" title="Brano in cache" />
+                                        <i v-else-if="cacheStore.downloadingSongIds.has(slotProps.option.song_id)" class="pi pi-arrow-circle-down cached-icon downloading" title="In scaricamento" />
                                     </div>
                                 </template>
                             </Listbox>

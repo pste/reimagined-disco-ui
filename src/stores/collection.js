@@ -191,14 +191,12 @@ const useCollectionStore = defineStore('collection', () => {
         },
         // actions: a single album info
         getAlbum: function(album_id) {
-            const found = items.value.filter( el => el.album_id == album_id );
-            if (found.length === 1) {
-                return found[0];
-            }
-            else {
+            const found = items.value.find( el => el.album_id == album_id );
+            if (!found) {
                 logger.error(`collection: album ${album_id} not found!`)
                 return null;
             }
+            return found;
         },
         // un brano dell'album è partito: aggiorna "ultimo ascolto" in locale (played arriva
         // dal server, stesso formato del resto della lista) e riordina se la vista è per

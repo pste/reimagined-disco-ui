@@ -79,27 +79,53 @@ function createObjectStore(db) {
     // here the init for other tables
 }
 
-//
+// la scadenza di un record letto si rinnova (expiresAt = adesso + ttlMs), ma non più
+// spesso di così: rinnovarla a ogni lettura voleva dire riscrivere su disco il record
+// intero (un chunk audio da 1 MB) ogni volta che veniva letto
+const TOUCH_MIN_MS = 60 * 60 * 1000; // 1 ora
+
+// lettura in sola lettura; il rinnovo della scadenza, quando serve, parte a parte
 async function get(tableName, id) {
     await ready;
     return new Promise((resolve, reject) => {
-        const store = db
-            .transaction([tableName], "readwrite")
-            .objectStore(tableName);
-        const req = store.get(id);
+        const req = db
+            .transaction([tableName], "readonly")
+            .objectStore(tableName)
+            .get(id);
         req.onsuccess = (event) => {
-            const record = event.target.result;
-            if (record?.data?.expiresAt && record.data.ttlMs) {
-                record.data.expiresAt = Date.now() + record.data.ttlMs;
-                store.put(record);
+            const data = event.target.result?.data; // all records are { data, id }
+            if (data?.expiresAt && data.ttlMs) {
+                const sinceLastTouch = Date.now() + data.ttlMs - data.expiresAt;
+                if (sinceLastTouch > TOUCH_MIN_MS) {
+                    touch(tableName, id); // fire-and-forget: non ritarda la lettura
+                }
             }
-            resolve(record?.data); // all records are { data, id }. Returns undefined if not found
+            resolve(data); // undefined if not found
         };
         req.onerror = (event) => {
             logger.error("idxDB get error:", event);
             reject(event);
         };
     });
+}
+
+// rinnova la scadenza di un record. Rilegge e riscrive nella stessa transazione:
+// se nel frattempo il record è stato cancellato non lo fa ricomparire
+function touch(tableName, id) {
+    const store = db
+        .transaction([tableName], "readwrite")
+        .objectStore(tableName);
+    const req = store.get(id);
+    req.onsuccess = (event) => {
+        const record = event.target.result;
+        if (record?.data?.ttlMs) {
+            record.data.expiresAt = Date.now() + record.data.ttlMs;
+            store.put(record);
+        }
+    };
+    req.onerror = (event) => {
+        logger.error("idxDB touch error:", event);
+    };
 }
 
 //
@@ -169,6 +195,22 @@ async function remove(tableName, id) {
     });
 }
 
+// svuota una tabella in un colpo solo
+async function clear(tableName) {
+    await ready;
+    return new Promise((resolve, reject) => {
+        const req = db
+            .transaction([tableName], "readwrite")
+            .objectStore(tableName)
+            .clear();
+        req.onsuccess = () => resolve();
+        req.onerror = (event) => {
+            logger.error("idxDB clear error:", event);
+            reject(event);
+        };
+    });
+}
+
 //
 async function sweepExpired(tableName) {
     await ready;
@@ -212,6 +254,7 @@ function createDB() {
         getAll: getAll,
         getAllKeys: getAllKeys,
         remove: remove,
+        clear: clear,
     }
 }
 
