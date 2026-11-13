@@ -26,15 +26,6 @@ request.onsuccess = function (event) {
         logger.error("Error creating/accessing idxbd database");
     };
 
-    // Interim solution for Google Chrome to create an objectStore. Will be deprecated
-    /*if (db.setVersion) {
-        if (db.version != dbVersion) {
-            var setVersion = db.setVersion(dbVersion);
-            setVersion.onsuccess = function () {
-                createObjectStore(db);
-            };
-        }
-    }*/
     resolveReady();
 }
 

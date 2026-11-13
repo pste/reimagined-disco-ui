@@ -18,8 +18,6 @@ const useCollectionStore = defineStore('collection', () => {
     const favoritesOnly = ref(false); // toggle "mostra solo i preferiti" (toolbar)
     const filter = ref({
         global: '', // global search (from toolbar)
-        name: '',
-        title: ''
     });
     // lista album salvata in localStorage (per utente: preferiti e ascolti sono personali):
     // all'apertura si mostra subito questa, intanto load() la aggiorna dal server
@@ -173,8 +171,6 @@ const useCollectionStore = defineStore('collection', () => {
         resetFilter: function() {
             filter.value = {
                 global: '',
-                name: '',
-                title: ''
             }
         },
         // actions: the artist discography, in chronological order

@@ -2,8 +2,10 @@ import { defineStore } from 'pinia'
 import { inject, shallowRef, computed } from 'vue'
 import logger from '@/plugins/logger'
 
-const CACHE_TABLE_CHUNKS = 'chunks';
-const MAX_CHUNKS_GUARD = 500;
+// tabella IndexedDB dei chunk audio, e tetto di sicurezza ai chunk di un brano (500 MB):
+// condivisi con feeder, streamer e pagina Cache
+export const CACHE_TABLE_CHUNKS = 'chunks';
+export const MAX_CHUNKS_GUARD = 500;
 
 // this maps (and extends !) the idxDB database. On the DB we have typical CRUD commands, here we offer reactivity
 // and other functionalities

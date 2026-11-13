@@ -5,6 +5,7 @@ import useCollectionStore from '@/stores/collection'
 import useCoversStore from '@/stores/covers'
 import useLoadingStore from '@/stores/loading'
 import CoverPicker from '@/components/CoverPicker.vue'
+import { sortByDiscTrack } from '@/composables/songUtils'
 
 const route = useRoute();
 const router = useRouter();
@@ -33,10 +34,7 @@ async function load() {
         const songs = await API.get('/search/songs', { albumid: route.params.albumid });
         if (!songs?.length) { return; }
 
-        songs.sort((a, b) => {
-            if (a.disc_nr !== b.disc_nr) { return a.disc_nr - b.disc_nr; }
-            return a.track_nr - b.track_nr;
-        });
+        sortByDiscTrack(songs);
 
         albumMeta.value = {
             albumTitle: album.value?.title ?? '',

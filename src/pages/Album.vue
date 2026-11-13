@@ -9,6 +9,7 @@ import useLoadingStore from '@/stores/loading'
 import useCacheStore from '@/stores/cache'
 import logger from '@/plugins/logger'
 import { useCacheFeeder } from '@/composables/useCacheFeeder'
+import { playerMetaOf, sortByDiscTrack } from '@/composables/songUtils'
 
 // init stuff
 const route = useRoute();
@@ -114,13 +115,7 @@ async function loadSongs() {
             if (route.params.albumid !== albumid) { return; }
             const artistName = album.value?.name ?? '';
             const albumTitle = album.value?.title ?? '';
-            albumSongs.value = songs.sort( (a,b) => {
-                if (a.disc_nr < b.disc_nr) return -1;
-                if (a.disc_nr > b.disc_nr) return 1;
-                if (a.track_nr < b.track_nr) return -1;
-                if (a.track_nr > b.track_nr) return 1;
-                return 0;
-            }).map(s => ({ ...s, artist: artistName, album: albumTitle }));
+            albumSongs.value = sortByDiscTrack(songs).map(s => ({ ...s, artist: artistName, album: albumTitle }));
         }
         finally {
             loadingStore.stop();
@@ -142,9 +137,8 @@ async function cacheAlbum() {
     cacheProgress.value = 0;
     try {
         for (const song of albumSongs.value) {
-            const meta = { title: song.title, artist: song.artist ?? '', album: song.album ?? '', album_id: song.album_id };
             // un brano fallito non blocca i successivi (l'errore è già mostrato dal client API)
-            await feeder.prefetch(song.song_id, meta).catch(() => {});
+            await feeder.prefetch(song.song_id, playerMetaOf(song)).catch(() => {});
             cacheProgress.value++;
         }
     }
@@ -177,8 +171,7 @@ async function loadAlbum() {
   // warm the cache for the first track as soon as the album is opened
   const firstSong = albumSongs.value[0];
   if (firstSong) {
-    const meta = { title: firstSong.title, artist: firstSong.artist ?? '', album: firstSong.album ?? '', album_id: firstSong.album_id };
-    feeder.prefetch(firstSong.song_id, meta).catch(() => {});
+    feeder.prefetch(firstSong.song_id, playerMetaOf(firstSong)).catch(() => {});
   }
 }
 

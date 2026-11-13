@@ -1,8 +1,8 @@
 import useSessionStore from '@/stores/session'
 import useErrorsStore from '@/stores/errors'
 import useGlobalsStore from '@/stores/globals'
+import logger from '@/plugins/logger'
 
-const logger = console; // PSTE TODO REF LOGGER PLUGIN
 
 function buildURL(base, url) {
     if (base.endsWith("/")) {

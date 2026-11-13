@@ -1,12 +1,10 @@
 import { inject } from 'vue'
 import logger from '@/plugins/logger'
 import useParametersStore from '@/stores/parameters'
-import useCacheStore from '@/stores/cache'
+import useCacheStore, { CACHE_TABLE_CHUNKS, MAX_CHUNKS_GUARD } from '@/stores/cache'
 import useCollectionStore from '@/stores/collection'
 
 //
-const CACHE_TABLE = 'chunks';
-const MAX_CHUNKS_GUARD = 500;
 const AUDIO_MIME = 'audio/mpeg';
 
 // module-level: dedup concurrent fetches across feeder instances
@@ -63,7 +61,7 @@ export function useCacheFeeder() {
         const key = cacheStore.cacheKey(songId, chunkId);
 
         // get from cache if cached ...
-        const cached = await cacheStore.get(CACHE_TABLE, key);
+        const cached = await cacheStore.get(CACHE_TABLE_CHUNKS, key);
         if (cached?.blob) {
             // chunk 1 must carry songMeta; old cache records lack it → fall through to re-fetch
             if (chunkId !== 1 || cached.songMeta) {
@@ -93,7 +91,7 @@ export function useCacheFeeder() {
                     if (playerMeta) { record.meta = playerMeta; }
                     if (playerMeta?.album_id != null) { record.album_id = playerMeta.album_id; }
                     if (songMeta) { record.songMeta = songMeta; }
-                    await cacheStore.put(CACHE_TABLE, key, record);
+                    await cacheStore.put(CACHE_TABLE_CHUNKS, key, record);
                 }
                 return { blob, songMeta };
             }

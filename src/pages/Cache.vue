@@ -1,12 +1,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import useLoadingStore from '@/stores/loading'
-import useCacheStore from '@/stores/cache'
+import useCacheStore, { CACHE_TABLE_CHUNKS } from '@/stores/cache'
 
 const cacheStore = useCacheStore();
 const loadingStore = useLoadingStore();
 
-const CACHE_TABLE = 'chunks';
 
 const allChunks = ref([]);
 const deleting = ref(null); // songId currently being deleted
@@ -41,7 +40,7 @@ const totalSize = computed(() =>
 async function loadCache() {
     loadingStore.start();
     try {
-        allChunks.value = await cacheStore.getAll(CACHE_TABLE);
+        allChunks.value = await cacheStore.getAll(CACHE_TABLE_CHUNKS);
     }
     finally {
         loadingStore.stop();
@@ -55,7 +54,7 @@ async function deleteSong(songId) {
     loadingStore.start();
     try {
         await cacheStore.removeSong(songId);
-        allChunks.value = await cacheStore.getAll(CACHE_TABLE);
+        allChunks.value = await cacheStore.getAll(CACHE_TABLE_CHUNKS);
     }
     finally {
         deleting.value = null;
@@ -78,7 +77,7 @@ async function sweepExpired() {
     loadingStore.start();
     try {
         await cacheStore.sweep();
-        allChunks.value = await cacheStore.getAll(CACHE_TABLE);
+        allChunks.value = await cacheStore.getAll(CACHE_TABLE_CHUNKS);
     }
     finally {
         loadingStore.stop();

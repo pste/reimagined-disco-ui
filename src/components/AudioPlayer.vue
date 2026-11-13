@@ -11,6 +11,7 @@ import { useStreamedAudio } from '@/composables/useStreamedAudio'
 import { useCacheFeeder } from '@/composables/useCacheFeeder'
 import logger from '@/plugins/logger'
 import { saveBlob } from '@/composables/saveBlob'
+import { playerMetaOf } from '@/composables/songUtils'
 
 const API = inject('API');
 const router = useRouter();
@@ -224,11 +225,6 @@ function seekSong(seconds) {
     return;
   }
   audioElement.value.currentTime = streamer.songBase.value + Math.max(0, seconds);
-}
-
-// meta del brano per feeder/streamer (salvata insieme ai chunk in cache)
-function playerMetaOf(song) {
-  return { title: song.title, artist: song.artist ?? '', album: song.album ?? '', album_id: song.album_id };
 }
 
 // gapless: lo streamer ha appeso tutto il brano `key` e chiede il successivo da accodare

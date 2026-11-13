@@ -61,17 +61,6 @@ export default defineConfig({
                                 maxAgeSeconds: 30 * 24 * 60 * 60 // 30 days
                             }
                         }
-                    },
-                    {
-                        urlPattern: /^https:\/\/.*\/stream\/song.*$/i,
-                        handler: 'NetworkFirst',
-                        options: {
-                            cacheName: 'audio-cache',
-                            expiration: {
-                                maxEntries: 50,
-                                maxAgeSeconds: 7 * 24 * 60 * 60 // 7 days
-                            }
-                        }
                     }
                 ]
             }

@@ -1,12 +1,11 @@
-import { ref, inject } from 'vue'
+import { ref } from 'vue'
 import logger from '@/plugins/logger'
 import { useCacheFeeder } from '@/composables/useCacheFeeder'
+import { MAX_CHUNKS_GUARD } from '@/stores/cache'
 import useErrorsStore from '@/stores/errors'
 import usePlaylistStore from '@/stores/playlist'
 
 const MIME_TYPE = 'audio/mpeg';
-const CACHE_TABLE = 'chunks';
-const MAX_CHUNKS_GUARD = 500;
 const CHUNK_BYTES = 1e6; // dimensione fissa dei chunk lato server (streamer.chunkFile)
 
 // feeder.prefetch(nextSongId) fire-and-forget dopo streamer.load.

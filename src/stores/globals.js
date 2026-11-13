@@ -2,7 +2,6 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
 const useGlobalsStore = defineStore('globals', () => {
-    const baseFolder = ref('.');
     const apiURL = ref("/api");
     if (import.meta.env.VITE_APIURL) { // dev mode
         apiURL.value = import.meta.env.VITE_APIURL;
@@ -13,7 +12,6 @@ const useGlobalsStore = defineStore('globals', () => {
     }
 
     return {
-        baseFolder,
         apiURL,
     }
 })
