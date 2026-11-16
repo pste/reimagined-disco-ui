@@ -230,9 +230,8 @@ onUnmounted(() => {
                          la colonna non si stringe sotto la larghezza minima del suo contenuto
                          (titolo + 5 pulsanti) e la playlist esce dal bordo destro della card -->
                     <div class="flex flex-column flex-grow-1 min-w-0 p-0 justify-content-start">
-                        <!-- flex-wrap: se lo spazio non basta i pulsanti vanno a capo sotto il titolo,
-                             tutti insieme perché stanno in un gruppo a parte -->
-                        <div class="flex flex-wrap align-items-center gap-2 mb-2">
+                        <!-- titolo sulla sua riga, pulsanti sempre nella riga sotto -->
+                        <div class="flex flex-column gap-2 mb-2">
                             <span class="text-xl font-bold">{{ album?.title }}</span>
                             <div class="flex align-items-center gap-2">
                                 <Button
