@@ -624,6 +624,16 @@ function btnPauseClick() {
   music.pause();
 }
 
+// play/pausa chiesti da fuori (pulsante play della pagina album)
+watch(() => playlistStore.toggleRequest, () => {
+  if (isPlaying.value) {
+    btnPauseClick();
+  }
+  else {
+    btnPlayClick();
+  }
+});
+
 function gotoDisc() {
   router.push({ name: 'album', params: { albumid: playlistStore.albumId }});
 }
@@ -670,8 +680,6 @@ function skipForward() {
             <span class="song-sep"> · </span>
             <span class="song-title">{{ currentSong.title }}</span>
           </span>
-          <!-- shuffle: piccolo come il toggle strumenti, acceso quando attivo -->
-          <Button class="tools-toggle" icon="pi pi-arrow-right-arrow-left" @click="playlistStore.toggleShuffle()" :severity="playlistStore.shuffle ? 'primary' : 'secondary'" rounded text title="Riproduzione casuale" aria-label="shuffle" />
           <!-- toggle riga strumenti (rate / in futuro bookmark): piccolo, fuori dalle righe
                principali, così su mobile la prima riga resta a 3 pulsanti e ci sta in larghezza -->
           <Button class="tools-toggle" icon="pi pi-sliders-h" @click="showTools = !showTools" :severity="showTools ? 'primary' : 'secondary'" rounded text aria-label="strumenti" />

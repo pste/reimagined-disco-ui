@@ -38,6 +38,9 @@ const usePlaylistStore = defineStore('playlist', () => {
     // shuffle non cambia songIndex e non ricarica il brano in corso
     const shuffle = ref(readShuffle());
     const order = ref([]);
+    // play/pausa chiesti da fuori dal player (es. pagina album): l'elemento audio è
+    // nell'AudioPlayer, che osserva questo contatore e fa play o pausa come il suo pulsante
+    const toggleRequest = ref(0);
 
     // computed
     const hasSongs = computed(() => {
@@ -100,6 +103,10 @@ const usePlaylistStore = defineStore('playlist', () => {
         }
         catch (_) {}
         buildOrder(songIndex.value);
+    }
+
+    function requestToggle() {
+        toggleRequest.value++;
     }
 
     function saveLastPlayed() {
@@ -173,6 +180,7 @@ const usePlaylistStore = defineStore('playlist', () => {
         isPlaying,
         currentSongDuration,
         shuffle,
+        toggleRequest,
 
         // getters
         hasSongs,
@@ -189,6 +197,7 @@ const usePlaylistStore = defineStore('playlist', () => {
         forgetLastPlayed,
         nextIndex,
         toggleShuffle,
+        requestToggle,
         // player
         play,
         stop,

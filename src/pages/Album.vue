@@ -159,6 +159,26 @@ async function selectSong(song) {
     playlistStore.play(idx);
 }
 
+// il player sta suonando (o ha caricato) un brano di questo album
+const playerOnThisAlbum = computed(() =>
+    !playlistStore.isIdle && Number(playlistStore.albumId) === Number(route.params.albumid)
+);
+
+// pulsante play accanto al titolo: play/pausa come il player se il brano in corso è di questo
+// album; altrimenti parte l'album, dal primo brano o (con lo shuffle) da uno a caso
+function playAlbum() {
+    if (playerOnThisAlbum.value) {
+        playlistStore.requestToggle();
+        return;
+    }
+    if (albumSongs.value.length === 0) { return; }
+    let idx = 0;
+    if (playlistStore.shuffle) {
+        idx = Math.floor(Math.random() * albumSongs.value.length);
+    }
+    selectSong(albumSongs.value[idx]);
+}
+
 // carica brani e cover dell'album della rotta
 async function loadAlbum() {
   await loadSongs();
@@ -215,6 +235,29 @@ onUnmounted(() => {
                         <div class="flex flex-wrap align-items-center gap-2 mb-2">
                             <span class="text-xl font-bold">{{ album?.title }}</span>
                             <div class="flex align-items-center gap-2">
+                                <Button
+                                    :icon="playerOnThisAlbum && playlistStore.isPlaying ? 'pi pi-pause' : 'pi pi-play'"
+                                    rounded
+                                    :disabled="albumSongs.length === 0"
+                                    @click="playAlbum"
+                                    :aria-label="playerOnThisAlbum && playlistStore.isPlaying ? 'Pausa' : 'Play'"
+                                />
+                                <!-- shuffle: acceso quando attivo. PrimeIcons non ha un'icona shuffle,
+                                     quindi SVG inline (frecce incrociate, da Material Icons) -->
+                                <Button
+                                    rounded
+                                    text
+                                    :severity="playlistStore.shuffle ? 'primary' : 'secondary'"
+                                    @click="playlistStore.toggleShuffle()"
+                                    title="Riproduzione casuale"
+                                    aria-label="Riproduzione casuale"
+                                >
+                                    <template #icon>
+                                        <svg class="shuffle-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path d="M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" />
+                                        </svg>
+                                    </template>
+                                </Button>
                                 <Button
                                     icon="pi pi-pencil"
                                     rounded
@@ -300,6 +343,13 @@ onUnmounted(() => {
 
 .artist-link:hover {
     text-decoration: underline;
+}
+
+/* stessa dimensione delle icone PrimeIcons dei pulsanti accanto */
+.shuffle-icon {
+    width: 1rem;
+    height: 1rem;
+    fill: currentColor;
 }
 
 .cached-icon {
